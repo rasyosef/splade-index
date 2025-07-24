@@ -9,10 +9,9 @@ and the path to the package's __init__.py file.
 import argparse
 from pathlib import Path
 
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Update the version of the package."
-    )
+    parser = argparse.ArgumentParser(description="Update the version of the package.")
     parser.add_argument(
         "--version",
         type=str,
@@ -27,8 +26,8 @@ def main():
     args = parser.parse_args()
 
     with open(args.path, "w") as f:
-        f.write(f"__version__ = \"{args.version}\"")
-        
+        f.write(f'__version__ = "{args.version}"')
+
 
 if __name__ == "__main__":
     main()
