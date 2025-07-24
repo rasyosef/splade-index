@@ -194,11 +194,18 @@ class SPLADE:
         self,
         model,
         documents: List[str],
+        batch_size: int = 32,
         show_progress=True,
         leave_progress=False,
     ):
         """
         Given a `corpus` of documents, create the SPLADE index.
+
+        model: SparseEncoder
+            A sentence-transformers SPLADE model
+
+        documents: List[str]
+            A list of documents to be indexed
 
         show_progress : bool
             If True, a progress bar will be shown. If False, no progress bar will be shown.
@@ -209,7 +216,7 @@ class SPLADE:
         import scipy.sparse as sp
 
         document_embeddings = model.encode_document(
-            documents, show_progress_bar=show_progress
+            documents, batch_size=batch_size, show_progress_bar=show_progress
         ).coalesce()
 
         doc_ids = document_embeddings.indices()[0].numpy()
@@ -315,6 +322,7 @@ class SPLADE:
         self,
         queries: List[str],
         k: int = 10,
+        batch_size: int = 32,
         sorted: bool = True,
         return_as: str = "tuple",
         show_progress: bool = True,
@@ -328,7 +336,7 @@ class SPLADE:
 
         Parameters
         ----------
-        query_tokens : List[str]
+        queries : List[str]
             List of queries.
 
         k : int
@@ -402,7 +410,10 @@ class SPLADE:
 
         # Embed Queries
         query_embeddings = self.model.encode_query(
-            queries, convert_to_tensor=False, show_progress_bar=show_progress
+            queries,
+            batch_size=batch_size,
+            convert_to_tensor=False,
+            show_progress_bar=show_progress,
         )
 
         query_token_ids = [
@@ -414,7 +425,7 @@ class SPLADE:
 
         tqdm_kwargs = {
             "total": len(query_token_ids),
-            "desc": "BM25S Retrieve",
+            "desc": "SPLADE Index Retrieve",
             "leave": leave_progress,
             "disable": not show_progress,
         }
