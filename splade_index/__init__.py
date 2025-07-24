@@ -208,7 +208,9 @@ class SPLADE:
         """
         import scipy.sparse as sp
 
-        document_embeddings = model.encode_document(documents).coalesce()
+        document_embeddings = model.encode_document(
+            documents, show_progress_bar=show_progress
+        ).coalesce()
 
         doc_ids = document_embeddings.indices()[0].numpy()
         token_ids = document_embeddings.indices()[1].numpy()
@@ -399,15 +401,15 @@ class SPLADE:
             n_threads = os.cpu_count()
 
         # Embed Queries
-        query_embeddings = [
-            self.model.encode_query(query).coalesce() for query in queries
-        ]
+        query_embeddings = self.model.encode_query(
+            queries, convert_to_tensor=False, show_progress_bar=show_progress
+        )
 
         query_token_ids = [
-            query_emb.indices()[0].numpy() for query_emb in query_embeddings
+            query_emb.coalesce().indices()[0].numpy() for query_emb in query_embeddings
         ]
         query_token_weights = [
-            query_emb.values().numpy() for query_emb in query_embeddings
+            query_emb.coalesce().values().numpy() for query_emb in query_embeddings
         ]
 
         tqdm_kwargs = {
