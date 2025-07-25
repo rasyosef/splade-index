@@ -218,7 +218,10 @@ class SPLADE:
         import scipy.sparse as sp
 
         document_embeddings = model.encode_document(
-            documents, batch_size=batch_size, show_progress_bar=show_progress
+            documents,
+            batch_size=batch_size,
+            save_to_cpu=True,
+            show_progress_bar=show_progress,
         ).coalesce()
 
         doc_ids = document_embeddings.indices()[0].numpy()
@@ -416,6 +419,7 @@ class SPLADE:
             queries,
             batch_size=batch_size,
             convert_to_tensor=False,
+            save_to_cpu=True,
             show_progress_bar=show_progress,
         )
 
