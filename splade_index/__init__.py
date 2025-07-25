@@ -197,6 +197,7 @@ class SPLADE:
         model,
         documents: List[str],
         batch_size: int = 32,
+        chunk_size: int = 128,
         show_progress=True,
         leave_progress=False,
     ):
@@ -209,6 +210,12 @@ class SPLADE:
         documents: List[str]
             A list of documents to be indexed
 
+        batch_size: int
+            The batch size used for the computation. Defaults to 32.
+
+        chunk_size: int
+            The chunk size used for the computation. Defaults to 128.
+
         show_progress : bool
             If True, a progress bar will be shown. If False, no progress bar will be shown.
 
@@ -220,7 +227,7 @@ class SPLADE:
         document_embeddings = model.encode_document(
             documents,
             batch_size=batch_size,
-            chunk_size=batch_size,
+            chunk_size=chunk_size,
             save_to_cpu=True,
             show_progress_bar=show_progress,
         ).coalesce()
@@ -419,7 +426,6 @@ class SPLADE:
         query_embeddings = self.model.encode_query(
             queries,
             batch_size=batch_size,
-            chunk_size=batch_size,
             convert_to_tensor=False,
             save_to_cpu=True,
             show_progress_bar=show_progress,
