@@ -1,6 +1,8 @@
 # SPLADE-Index⚡
 
-<i>SPLADE-Index is an ultrafast index for SPLADE sparse retrieval models implemented in pure Python and powered by Scipy sparse matrices</i>
+<i>
+SPLADE-Index is an ultrafast index for SPLADE sparse retrieval models implemented in pure Python and powered by Scipy sparse matrices. It is built on top of the BM25s library.
+</i>
 
 ## Installation
 
