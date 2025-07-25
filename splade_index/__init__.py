@@ -220,6 +220,7 @@ class SPLADE:
         document_embeddings = model.encode_document(
             documents,
             batch_size=batch_size,
+            chunk_size=batch_size,
             save_to_cpu=True,
             show_progress_bar=show_progress,
         ).coalesce()
@@ -418,6 +419,7 @@ class SPLADE:
         query_embeddings = self.model.encode_query(
             queries,
             batch_size=batch_size,
+            chunk_size=batch_size,
             convert_to_tensor=False,
             save_to_cpu=True,
             show_progress_bar=show_progress,
