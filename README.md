@@ -45,7 +45,8 @@ retriever.index(model=model, documents=corpus)
 queries = ["does the fish purr like a cat?"]
 
 # Get top-k results as a tuple of (doc ids, documents, scores). All three are arrays of shape (n_queries, k).
-doc_ids, result_docs, scores = retriever.retrieve(queries, k=2)
+results = retriever.retrieve(queries, k=2)
+doc_ids, result_docs, scores = results.doc_ids, results.documents, results.scores
 
 for i in range(doc_ids.shape[1]):
     doc_id, doc, score = doc_ids[0, i], result_docs[0, i], scores[0, i]
