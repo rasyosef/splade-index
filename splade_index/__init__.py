@@ -49,6 +49,7 @@ class Results(NamedTuple):
     retrieved documents or indices.
     """
 
+    doc_ids: np.ndarray
     documents: np.ndarray
     scores: np.ndarray
 
@@ -60,9 +61,10 @@ class Results(NamedTuple):
         """
         Merge a list of Results objects into a single Results object.
         """
+        doc_ids = np.concatenate([r.doc_ids for r in results], axis=0)
         documents = np.concatenate([r.documents for r in results], axis=0)
         scores = np.concatenate([r.scores for r in results], axis=0)
-        return cls(documents=documents, scores=scores)
+        return cls(doc_ids=doc_ids, documents=documents, scores=scores)
 
 
 def get_unique_tokens(
@@ -243,6 +245,7 @@ class SPLADE:
         self.scores = scores
         self.vocab_dict = vocab_dict
         self.model = model
+        self.corpus = np.array(documents)
 
         # we create unique token IDs from the vocab_dict for faster lookup
         self.unique_token_ids_set = set(token_ids)
@@ -459,7 +462,11 @@ class SPLADE:
         retrieved_docs = indices
 
         if return_as == "tuple":
-            return Results(documents=retrieved_docs, scores=scores)
+            return Results(
+                doc_ids=retrieved_docs,
+                documents=self.corpus[retrieved_docs],
+                scores=scores,
+            )
         elif return_as == "documents":
             return retrieved_docs
         else:
