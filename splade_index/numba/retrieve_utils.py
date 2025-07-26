@@ -113,10 +113,10 @@ def _retrieve_numba_functional(
             "The function will automatically determine the best chunksize."
         )
 
-    allowed_return_as = ["tuple", "documents"]
+    allowed_return_as = ["tuple", "doc_ids", "documents"]
 
     if return_as not in allowed_return_as:
-        raise ValueError("`return_as` must be either 'tuple' or 'documents'")
+        raise ValueError("`return_as` must be either 'tuple', 'doc_ids' or 'documents'")
     else:
         pass
 
@@ -158,7 +158,7 @@ def _retrieve_numba_functional(
 
     if return_as == "tuple":
         return retrieved_docs, retrieved_scores
-    elif return_as == "documents":
+    elif return_as in ("doc_ids", "documents"):
         return retrieved_docs
     else:
-        raise ValueError("`return_as` must be either 'tuple' or 'documents'")
+        raise ValueError("`return_as` must be either 'tuple', 'doc_ids' or 'documents'")

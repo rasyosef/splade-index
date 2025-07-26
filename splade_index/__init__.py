@@ -10,6 +10,8 @@ from typing import Any, Tuple, Dict, Iterable, List, NamedTuple, Union
 
 import numpy as np
 
+from .utils import json_functions as json_functions
+
 try:
     from .numba import selection as selection_jit
 except ImportError:
@@ -367,8 +369,8 @@ class SPLADE:
             If return_as="tuple", a named tuple with two fields will be returned:
             `documents` and `scores`, which can be accessed as `result.documents` and
             `result.scores`, or by unpacking, e.g. `documents, scores = retrieve(...)`.
-            If return_as="documents", only the retrieved documents (or indices if `corpus`
-            is not provided) will be returned.
+            If `return_as="doc_ids"`, only the ids of the retrieved documents will be returned.
+            If return_as="documents", only the retrieved documents will be returned.
 
         show_progress : bool
             If True, a progress bar will be shown. If False, no progress bar will be shown.
@@ -395,7 +397,8 @@ class SPLADE:
         -------
         Results or np.ndarray
             If `return_as="tuple"`, a named tuple with two fields will be returned: `documents` and `scores`.
-            If `return_as="documents"`, only the retrieved documents (or indices if `corpus` is not provided) will be returned.
+            If `return_as="doc_ids"`, only the ids of the retrieved documents will be returned.
+            If `return_as="documents"`, only the retrieved documents will be returned.
 
         Raises
         ------
@@ -412,10 +415,12 @@ class SPLADE:
                 f", which is {num_docs} (corpus size should be larger than top-k)."
                 f" Please set with a smaller k or increase the size of corpus."
             )
-        allowed_return_as = ["tuple", "documents"]
+        allowed_return_as = ["tuple", "doc_ids", "documents"]
 
         if return_as not in allowed_return_as:
-            raise ValueError("`return_as` must be either 'tuple' or 'documents'")
+            raise ValueError(
+                "`return_as` must be either 'tuple', 'doc_ids' or 'documents'"
+            )
         else:
             pass
 
@@ -469,6 +474,8 @@ class SPLADE:
                 return Results(
                     doc_ids=res[0], documents=self.corpus[res[0]], scores=res[1]
                 )
+            elif return_as == "documents":
+                return self.corpus[res]
             else:
                 return res
 
@@ -514,6 +521,259 @@ class SPLADE:
                 scores=scores,
             )
         elif return_as == "documents":
+            return self.corpus[retrieved_docs]
+        elif return_as == "doc_ids":
             return retrieved_docs
         else:
-            raise ValueError("`return_as` must be either 'tuple' or 'documents'")
+            raise ValueError(
+                "`return_as` must be either 'tuple', 'doc_ids' or 'documents'"
+            )
+
+    def save(
+        self,
+        save_dir,
+        data_name="data.csc.index.npy",
+        indices_name="indices.csc.index.npy",
+        indptr_name="indptr.csc.index.npy",
+        vocab_name="vocab.index.json",
+        params_name="params.index.json",
+        corpus_name="corpus.npy",
+        allow_pickle=False,
+    ):
+        """
+        Save the BM25S index to the `save_dir` directory. This will save the scores array,
+        the indices array, the indptr array, the vocab dictionary, and the parameters.
+
+        Parameters
+        ----------
+        save_dir : str
+            The directory where the BM25S index will be saved.
+
+        corpus_name : str
+            The name of the file that will contain the corpus.
+
+        data_name : str
+            The name of the file that will contain the data array.
+
+        indices_name : str
+            The name of the file that will contain the indices array.
+
+        indptr_name : str
+            The name of the file that will contain the indptr array.
+
+        vocab_name : str
+            The name of the file that will contain the vocab dictionary.
+
+        params_name : str
+            The name of the file that will contain the parameters.
+
+        allow_pickle : bool
+            If True, the arrays will be saved using pickle. If False, the arrays will be saved
+            in a more efficient format, but they will not be readable by older versions of numpy.
+        """
+        # Save the self.vocab_dict and self.score_matrix to the save_dir
+        save_dir = Path(save_dir)
+        save_dir.mkdir(parents=True, exist_ok=True)
+
+        # Save the scores arrays
+        data_path = save_dir / data_name
+        indices_path = save_dir / indices_name
+        indptr_path = save_dir / indptr_name
+
+        np.save(data_path, self.scores["data"], allow_pickle=allow_pickle)
+        np.save(indices_path, self.scores["indices"], allow_pickle=allow_pickle)
+        np.save(indptr_path, self.scores["indptr"], allow_pickle=allow_pickle)
+
+        # Save the vocab dictionary
+        vocab_path = save_dir / vocab_name
+
+        with open(vocab_path, "wt", encoding="utf-8") as f:
+            f.write(json_functions.dumps(self.vocab_dict, ensure_ascii=False))
+
+        # Save the parameters
+        params_path = save_dir / params_name
+        params = dict(
+            dtype=self.dtype,
+            int_dtype=self.int_dtype,
+            num_docs=self.scores["num_docs"],
+            version=__version__,
+            backend=self.backend,
+        )
+        with open(params_path, "w") as f:
+            json.dump(params, f, indent=4)
+
+        corpus = self.corpus
+        corpus_path = save_dir / corpus_name
+
+        if corpus is not None:
+            np.save(corpus_path, corpus, allow_pickle=allow_pickle)
+
+    def load_scores(
+        self,
+        save_dir,
+        data_name="data.csc.index.npy",
+        indices_name="indices.csc.index.npy",
+        indptr_name="indptr.csc.index.npy",
+        num_docs=None,
+        mmap=False,
+        allow_pickle=False,
+    ):
+        """
+        Load the scores arrays from the BM25 index. This is useful if you want to load
+        the scores arrays separately from the vocab dictionary and the parameters.
+
+        This is called internally by the `load` method, so you do not need to call it directly.
+
+        Parameters
+        ----------
+        data_name : str
+            The name of the file that contains the data array.
+
+        indices_name : str
+            The name of the file that contains the indices array.
+
+        indptr_name : str
+            The name of the file that contains the indptr array.
+
+        mmap : bool
+            Whether to use Memory-map for the np.load function. If false, the arrays will be loaded into memory.
+            If True, the arrays will be memory-mapped, using 'r' mode. This is useful for very large arrays that
+            do not fit into memory.
+
+        allow_pickle : bool
+            If True, the arrays will be loaded using pickle. If False, the arrays will be loaded
+            in a more efficient format, but they will not be readable by older versions of numpy.
+        """
+        save_dir = Path(save_dir)
+
+        data_path = save_dir / data_name
+        indices_path = save_dir / indices_name
+        indptr_path = save_dir / indptr_name
+
+        mmap_mode = "r" if mmap else None
+        data = np.load(data_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode)
+        indices = np.load(indices_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode)
+        indptr = np.load(indptr_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode)
+
+        scores = {}
+        scores["data"] = data
+        scores["indices"] = indices
+        scores["indptr"] = indptr
+        scores["num_docs"] = num_docs
+
+        self.scores = scores
+
+    @classmethod
+    def load(
+        cls,
+        save_dir,
+        model,
+        data_name="data.csc.index.npy",
+        indices_name="indices.csc.index.npy",
+        indptr_name="indptr.csc.index.npy",
+        vocab_name="vocab.index.json",
+        params_name="params.index.json",
+        corpus_name="corpus.npy",
+        load_corpus=True,
+        mmap=False,
+        allow_pickle=False,
+        load_vocab=True,
+    ):
+        """
+        Load a BM25S index that was saved using the `save` method.
+        This returns a BM25S object with the saved parameters and scores,
+        which can be directly used for retrieval.
+
+        Parameters
+        ----------
+        save_dir : str
+            The directory where the BM25S index was saved.
+
+        model: SparseEncoder
+            A sentence-transformers SPLADE model (The same one used to create the index)
+
+        data_name : str
+            The name of the file that contains the data array.
+
+        indices_name : str
+            The name of the file that contains the indices array.
+
+        indptr_name : str
+            The name of the file that contains the indptr array.
+
+        vocab_name : str
+            The name of the file that contains the vocab dictionary.
+
+        params_name : str
+            The name of the file that contains the parameters.
+
+        corpus_name : str
+            The name of the file that contains the corpus.
+
+        load_corpus : bool
+            If True, the corpus will be loaded from the `corpus_name` file.
+
+        mmap : bool
+            Whether to use Memory-map for the np.load function. If false, the arrays will be loaded into memory.
+            If True, the arrays will be memory-mapped, using 'r' mode. This is useful for very large arrays that
+            do not fit into memory.
+
+        allow_pickle : bool
+            If True, the arrays will be loaded using pickle. If False, the arrays will be loaded
+            in a more efficient format, but they will not be readable by older versions of numpy.
+
+        load_vocab : bool
+            If True, the vocab dictionary will be loaded from the `vocab_name` file. If False, the vocab dictionary
+            will not be loaded, and the `vocab_dict` attribute of the BM25 object will be set to None.
+        """
+        if not isinstance(mmap, bool):
+            raise ValueError("`mmap` must be a boolean")
+
+        # Load the SPLADE index from the save_dir
+        save_dir = Path(save_dir)
+
+        # Load the parameters
+        params_path = save_dir / params_name
+        with open(params_path, "r") as f:
+            params: dict = json_functions.loads(f.read())
+
+        # Load the vocab dictionary
+        if load_vocab:
+            vocab_path = save_dir / vocab_name
+            with open(vocab_path, "r", encoding="utf-8") as f:
+                vocab_dict: dict = json_functions.loads(f.read())
+        else:
+            vocab_dict = {}
+
+        original_version = params.pop("version", None)
+        num_docs = params.pop("num_docs", None)
+
+        splade_obj = cls(**params)
+        splade_obj.vocab_dict = vocab_dict
+        splade_obj._original_version = original_version
+        splade_obj.unique_token_ids_set = set(splade_obj.vocab_dict.values())
+
+        splade_obj.model = model
+
+        splade_obj.load_scores(
+            save_dir=save_dir,
+            data_name=data_name,
+            indices_name=indices_name,
+            indptr_name=indptr_name,
+            mmap=mmap,
+            num_docs=num_docs,
+            allow_pickle=allow_pickle,
+        )
+
+        if load_corpus:
+            # load the model from the snapshot
+            # if a corpus.jsonl file exists, load it
+            corpus_path = save_dir / corpus_name
+            if os.path.exists(corpus_path):
+                mmap_mode = "r" if mmap else None
+                corpus = np.load(
+                    corpus_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode
+                )
+                splade_obj.corpus = corpus
+
+        return splade_obj
