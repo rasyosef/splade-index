@@ -9,8 +9,7 @@ with open("README.md", encoding="utf8") as fp:
     long_description = fp.read()
 
 extras_require = {
-    "core": ["orjson", "tqdm", "PyStemmer", "numba"],
-    "stem": ["PyStemmer"],
+    "core": ["orjson", "tqdm", "numba"],
     "hf": ["huggingface_hub"],
     "dev": ["black"],
     "selection": ["jax[cpu]"],
