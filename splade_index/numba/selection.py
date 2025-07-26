@@ -115,7 +115,7 @@ def _numba_sorted_top_k(array: np.ndarray, k: int, sorted=True):
         # values = top_k_values
         # indices = top_k_indices
 
-        # This is the new code that uses numpy to sort the values and indices instead of 
+        # This is the new code that uses numpy to sort the values and indices instead of
         # using the heap to sort them.
         sorted_indices = np.flip(np.argsort(values))
         indices = indices[sorted_indices]
@@ -130,9 +130,7 @@ def topk(query_scores, k, backend="numba", sorted=True):
     on a 1-dimensional array of scores.
     """
     if backend not in ["numba"]:
-        raise ValueError(
-            "Invalid backend. Only 'numba' is supported."
-        )
+        raise ValueError("Invalid backend. Only 'numba' is supported.")
     elif backend == "numba":
         uns_scores, uns_indices = _numba_sorted_top_k(query_scores, k)
         if sorted:
@@ -142,7 +140,7 @@ def topk(query_scores, k, backend="numba", sorted=True):
         else:
             query_inds = uns_indices
             query_scores = uns_scores
-        
+
         return query_scores, query_inds
 
     else:

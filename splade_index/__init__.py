@@ -438,6 +438,40 @@ class SPLADE:
             query_emb.coalesce().values().numpy() for query_emb in query_embeddings
         ]
 
+        if self.backend == "numba":
+            if _retrieve_numba_functional is None:
+                raise ImportError(
+                    "Numba is not installed. Please install numba wiith `pip install numba` to use the numba backend."
+                )
+
+            backend_selection = (
+                "numba" if backend_selection == "auto" else backend_selection
+            )
+
+            res = _retrieve_numba_functional(
+                query_tokens_ids=query_token_ids,
+                query_tokens_weights=query_token_weights,
+                scores=self.scores,
+                corpus=self.corpus,
+                k=k,
+                sorted=sorted,
+                return_as=return_as,
+                show_progress=show_progress,
+                leave_progress=leave_progress,
+                n_threads=n_threads,
+                chunksize=None,  # chunksize is ignored in the numba backend
+                backend_selection=backend_selection,  # backend_selection is ignored in the numba backend
+                dtype=self.dtype,
+                int_dtype=self.int_dtype,
+            )
+
+            if return_as == "tuple":
+                return Results(
+                    doc_ids=res[0], documents=self.corpus[res[0]], scores=res[1]
+                )
+            else:
+                return res
+
         tqdm_kwargs = {
             "total": len(query_token_ids),
             "desc": "SPLADE Index Retrieve",

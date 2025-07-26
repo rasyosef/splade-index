@@ -1,1 +1,1 @@
-from . import benchmark, beir, corpus, json_functions
+from . import corpus, json_functions
