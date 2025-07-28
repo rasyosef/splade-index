@@ -35,7 +35,7 @@ Here is a simple example of how to use `splade-index`:
 from sentence_transformers import SparseEncoder
 from splade_index import SPLADE
 
-# Download a SPLADE from the 🤗 Hub
+# Download a SPLADE model from the 🤗 Hub
 model = SparseEncoder("rasyosef/splade-tiny")
 
 # Create your corpus here
