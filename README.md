@@ -3,14 +3,21 @@
 <i>
 SPLADE-Index is an ultrafast index for SPLADE sparse retrieval models implemented in pure Python and powered by Scipy sparse matrices. It is built on top of the BM25s library.
 </i>
+<br/><br/>
+
+SPLADE is a neural retrieval model which learns query/document sparse expansion. Sparse representations benefit from several advantages compared to dense approaches: efficient use of inverted index, explicit lexical match, interpretability... They also seem to be better at generalizing on out-of-domain data (BEIR benchmark).
+
+For more information about SPLADE models, please refer to the following. 
+ - [SPLADE: Sparse Lexical and Expansion Model for First Stage Ranking](https://arxiv.org/abs/2107.05720)
+ - [List of Pretrained Sparse Encoder (Sparse Embeddings) Models](https://sbert.net/docs/sparse_encoder/pretrained_models.html)
+ - [Training and Finetuning Sparse Embedding Models with Sentence Transformers v5](https://huggingface.co/blog/train-sparse-encoder).
 
 ## Installation
 
 You can install `splade-index` with pip:
 
 ```bash
-git clone https://github.com/rasyosef/splade-index.git
-pip install ./splade-index
+pip install splade-index
 ```
 
 Recommended (but optional) dependencies:
@@ -28,7 +35,7 @@ Here is a simple example of how to use `splade-index`:
 from sentence_transformers import SparseEncoder
 from splade_index import SPLADE
 
-# Download SPLADE from the 🤗 Hub
+# Download a SPLADE from the 🤗 Hub
 model = SparseEncoder("rasyosef/splade-tiny")
 
 # Create your corpus here
