@@ -23,7 +23,7 @@ setup(
     version=version["__version__"],
     author="Yosef Worku Alemneh",
     author_email="",
-    url=f"https://github.com/rasyosef/{package_name}",
+    url=f"https://github.com/rasyosef/splade-index",
     description=f"An ultra-fast search index for SPLADE sparse retrieval models.",
     long_description=long_description,
     packages=find_packages(include=[f"{package_name}*"]),
