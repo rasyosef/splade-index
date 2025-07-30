@@ -245,6 +245,11 @@ class SPLADE:
         # we create unique token IDs from the vocab_dict for faster lookup
         self.unique_token_ids_set = set(token_ids)
 
+        if self.backend == "numba":
+            # to initiate jit-compilation
+            self.retrieve(["dummy query"], k=1, batch_size=8)
+        print("Indexing complete!")
+
     def get_scores(
         self, query_token_ids_single: List[int], query_token_weights_single: List[float]
     ) -> np.ndarray:
@@ -409,8 +414,8 @@ class SPLADE:
         if n_threads == -1:
             n_threads = os.cpu_count()
 
-        if self.backend == "numba" and backend_selection != "numba":
-            error_msg = "backend_selection must be `numba` when retrieving using the numba backend. Please choose a different backend or change the backend_selection parameter to numba."
+        if self.backend == "numba" and backend_selection not in ("numba", "auto"):
+            error_msg = "backend_selection must be `numba` or `auto` when retrieving using the numba backend. Please choose a different backend or change the backend_selection parameter to numba."
             raise ValueError(error_msg)
 
         # Embed Queries
