@@ -69,18 +69,7 @@ class Results(NamedTuple):
         return cls(doc_ids=doc_ids, documents=documents, scores=scores)
 
 
-def get_unique_tokens(
-    corpus_tokens, show_progress=True, leave_progress=False, desc="Create Vocab"
-):
-    unique_tokens = set()
-    for doc_tokens in tqdm(
-        corpus_tokens, desc=desc, disable=not show_progress, leave=leave_progress
-    ):
-        unique_tokens.update(doc_tokens)
-    return unique_tokens
-
-
-def is_list_of_list_of_type(obj, type_=int):
+def is_list_of_type(obj, type_=str):
     if not isinstance(obj, list):
         return False
 
@@ -88,14 +77,7 @@ def is_list_of_list_of_type(obj, type_=int):
         return False
 
     first_elem = obj[0]
-    if not isinstance(first_elem, list):
-        return False
-
-    if len(first_elem) == 0:
-        return False
-
-    first_token = first_elem[0]
-    if not isinstance(first_token, type_):
+    if not isinstance(first_elem, type_):
         return False
 
     return True
@@ -386,8 +368,8 @@ class SPLADE:
             Number of batches to process in each job in the multiprocessing pool.
 
         backend_selection : str
-            The backend to use for the top-k retrieval. Choose from "auto", "numpy", "jax".
-            If "auto", it will use JAX if it is available, otherwise it will use numpy.
+            The backend to use for the top-k retrieval. Choose from "auto", "numpy", "pytorch".
+            If "auto", it will use PyTorch if it is available, otherwise it will use numpy.
 
         weight_mask : np.ndarray
             A weight mask to filter the documents. If provided, the scores for the masked
@@ -427,6 +409,10 @@ class SPLADE:
         if n_threads == -1:
             n_threads = os.cpu_count()
 
+        if self.backend == "numba" and backend_selection != "numba":
+            error_msg = "backend_selection must be `numba` when retrieving using the numba backend. Please choose a different backend or change the backend_selection parameter to numba."
+            raise ValueError(error_msg)
+
         # Embed Queries
         query_embeddings = self.model.encode_query(
             queries,
@@ -443,7 +429,7 @@ class SPLADE:
             query_emb.coalesce().values().numpy() for query_emb in query_embeddings
         ]
 
-        if self.backend == "numba":
+        if self.backend == "numba" or backend_selection == "numba":
             if _retrieve_numba_functional is None:
                 raise ImportError(
                     "Numba is not installed. Please install numba wiith `pip install numba` to use the numba backend."
@@ -457,7 +443,6 @@ class SPLADE:
                 query_tokens_ids=query_token_ids,
                 query_tokens_weights=query_token_weights,
                 scores=self.scores,
-                corpus=self.corpus,
                 k=k,
                 sorted=sorted,
                 return_as=return_as,

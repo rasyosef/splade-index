@@ -12,7 +12,7 @@ extras_require = {
     "core": ["orjson", "tqdm", "numba"],
     "hf": ["huggingface_hub"],
     "dev": ["black"],
-    "selection": ["jax[cpu]"],
+    "selection": ["torch"],
     "evaluation": ["pytrec_eval"],
 }
 # Dynamically create the 'full' extra by combining all other extras

@@ -88,7 +88,6 @@ def _retrieve_numba_functional(
     query_tokens_ids,
     query_tokens_weights,
     scores,
-    corpus: List[Any] = None,
     k: int = 10,
     sorted: bool = True,
     return_as: str = "tuple",
