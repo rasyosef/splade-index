@@ -1,3 +1,5 @@
+import warnings
+
 from concurrent.futures import ThreadPoolExecutor
 from collections import Counter
 from functools import partial
@@ -6,7 +8,7 @@ import os
 import logging
 from pathlib import Path
 import json
-from typing import Any, Tuple, Dict, Iterable, List, NamedTuple, Union
+from typing import Any, Tuple, Dict, Iterable, List, NamedTuple, Union, Literal
 
 import numpy as np
 
@@ -88,7 +90,7 @@ class SPLADE:
         self,
         dtype="float32",
         int_dtype="int32",
-        backend="numpy",
+        backend: Literal["auto", "numpy", "numba"] = "auto",
     ):
         """
         SPLADE initialization.
@@ -102,8 +104,7 @@ class SPLADE:
             The data type of the indices in the BM25 scores.
 
         backend : str
-            The backend used during retrieval. By default, it uses the numpy backend, which
-            only requires numpy and scipy as dependencies. You can also select `backend="numba"`
+            The backend used during retrieval. By default, it is set to "auto". You can also select `backend="numba"`
             to use the numba backend, which requires the numba library. If you select `backend="auto"`,
             the function will use the numba backend if it is available, otherwise it will use the numpy
             backend.
@@ -247,8 +248,7 @@ class SPLADE:
 
         if self.backend == "numba":
             # to initiate jit-compilation
-            self.retrieve(["dummy query"], k=1, batch_size=8)
-        print("Indexing complete!")
+            _ = self.retrieve(["dummy query"], k=1, batch_size=8, show_progress=False)
 
     def get_scores(
         self, query_token_ids_single: List[int], query_token_weights_single: List[float]
@@ -415,8 +415,17 @@ class SPLADE:
             n_threads = os.cpu_count()
 
         if self.backend == "numba" and backend_selection not in ("numba", "auto"):
-            error_msg = "backend_selection must be `numba` or `auto` when retrieving using the numba backend. Please choose a different backend or change the backend_selection parameter to numba."
-            raise ValueError(error_msg)
+            warning_msg = (
+                "backend is set to `numba`, but backend_selection is neither `numba` or `auto`."
+                "In order to retrieve using the numba backend, please change the backend_selection parameter to `numba`."
+            )
+            warnings.warn(warning_msg, UserWarning)
+
+        backend_selection = (
+            "numba"
+            if backend_selection == "auto" and self.backend == "numba"
+            else backend_selection
+        )
 
         # Embed Queries
         query_embeddings = self.model.encode_query(
@@ -434,15 +443,11 @@ class SPLADE:
             query_emb.coalesce().values().numpy() for query_emb in query_embeddings
         ]
 
-        if self.backend == "numba" or backend_selection == "numba":
+        if backend_selection == "numba":
             if _retrieve_numba_functional is None:
                 raise ImportError(
                     "Numba is not installed. Please install numba wiith `pip install numba` to use the numba backend."
                 )
-
-            backend_selection = (
-                "numba" if backend_selection == "auto" else backend_selection
-            )
 
             res = _retrieve_numba_functional(
                 query_tokens_ids=query_token_ids,
