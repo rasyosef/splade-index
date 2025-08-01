@@ -416,7 +416,7 @@ class SPLADE:
 
         if self.backend == "numba" and backend_selection not in ("numba", "auto"):
             warning_msg = (
-                "backend is set to `numba`, but backend_selection is neither `numba` or `auto`."
+                "backend is set to `numba`, but backend_selection is neither `numba` or `auto`. "
                 "In order to retrieve using the numba backend, please change the backend_selection parameter to `numba`."
             )
             warnings.warn(warning_msg, UserWarning)

@@ -69,3 +69,33 @@ import splade_index
 
 reloaded_retriever = splade_index.SPLADE.load("animal_index_splade", model=model)
 ```
+
+## Performance
+
+`splade-index` with a `numba` backend gives `61%` faster query time on average than the [pyseismic-lsr](https://github.com/TusKANNy/seismic) library, which is "an Efficient Inverted Index for Approximate Retrieval", all while `splade-index` does exact retrieval with no approximations involved. The query latency values shown include the query encoding times using the `rasyosef/splade-mini` SPLADE sparse encoder model.  
+
+|Library|Latency per query (in miliseconds)|
+|:-|:-|
+|`splade-index` (with `numba` backend)|**1.56 ms**|
+|`splade-index` (with `jax` backend)|2.53 ms|
+|`splade-index` (with `numpy` backend)|2.48 ms|
+|`pyseismic-lsr`|2.51 ms|
+
+The tests were conducted using **`100,231`** documents and **`5,000`** queries from the [sentence-transformers/natural-questions](https://huggingface.co/datasets/sentence-transformers/natural-questions) dataset, and an NVIDIA Tesla T4 16GB GPU on Google Colab. 
+
+## Acknowledgement
+- `splade-index` was built on top of the [bm25s](https://github.com/xhluca/bm25s) library, and makes use of it's excellent inverted index impementation, originally used by `bm25s` for many variants of the BM25 ranking algorithm. 
+
+
+<!-- ## Citation
+
+You can refer to the library with this BibTeX:
+
+```bibtex
+@misc{PyLate,
+  title={SPLADE-Index: A fast Search Index for SPLADE Sparse Retrieval Models},
+  author={Yosef Worku Alemneh},
+  url={https://github.com/rasyosef/splade-index},
+  year={2025}
+}
+``` -->
