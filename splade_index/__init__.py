@@ -248,7 +248,13 @@ class SPLADE:
 
         if self.backend == "numba":
             # to initiate jit-compilation
-            _ = self.retrieve(["dummy query"], k=1, batch_size=8, show_progress=False)
+            _ = self.retrieve(
+                ["dummy query"],
+                k=1,
+                batch_size=8,
+                return_as="doc_ids",
+                show_progress=False,
+            )
 
     def get_scores(
         self, query_token_ids_single: List[int], query_token_weights_single: List[float]
