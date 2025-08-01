@@ -72,7 +72,7 @@ reloaded_retriever = splade_index.SPLADE.load("animal_index_splade", model=model
 
 ## Performance
 
-`splade-index` with a `numba` backend gives `61%` faster query time on average than the [pyseismic-lsr](https://github.com/TusKANNy/seismic) library, which is "an Efficient Inverted Index for Approximate Retrieval", all while `splade-index` does exact retrieval with no approximations involved. 
+`splade-index` with a `numba` backend gives `38%` faster query time on average than the [pyseismic-lsr](https://github.com/TusKANNy/seismic) library, which is "an Efficient Inverted Index for Approximate Retrieval", all while `splade-index` does exact retrieval with no approximations involved. 
 
 The query latency values shown include the query encoding times using the `rasyosef/splade-mini` SPLADE sparse encoder model.  
 
