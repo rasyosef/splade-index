@@ -88,6 +88,16 @@ The tests were conducted using **`100,231`** documents and **`5,000`** queries f
 ## Acknowledgement
 `splade-index` was built on top of the [bm25s](https://github.com/xhluca/bm25s) library, and makes use of its excellent inverted index impementation, originally used by `bm25s` for its many variants of the BM25 ranking algorithm. 
 
+### SPLADE Models
+
+You can use SPLADE-Index with any splade model from huggingface hub such as the ones below.
+
+||Size (# Params)|MRR@10 (MS MARCO dev)|
+|:---|:----|:-------------------|
+|[naver/splade-v3](https://huggingface.co/naver/splade-v3)|110M|40.2|
+|[naver/splade-v3-distilbert](https://huggingface.co/naver/splade-v3-distilbert)|67.0M|38.7|
+|[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|33.2|
+|[rasyosef/splade-tiny](https://huggingface.co/rasyosef/splade-tiny)|4.4M|30.9|
 
 ## Citation
 
