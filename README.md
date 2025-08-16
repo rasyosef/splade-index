@@ -85,6 +85,14 @@ The query latency values shown include the query encoding times using the `rasyo
 
 The tests were conducted using **`100,231`** documents and **`5,000`** queries from the [sentence-transformers/natural-questions](https://huggingface.co/datasets/sentence-transformers/natural-questions) dataset, and an NVIDIA Tesla T4 16GB GPU on Google Colab. 
 
+## Examples
+
+- [`splade_index_usage_example.ipynb`](examples
+/splade_index_usage_example.ipynb) to index and query `1,000` documents on a cpu.
+
+- [`indexing_and_querying_500k_docs_with_gpu.ipynb`](examples
+/indexing_and_querying_500k_docs_with_gpu.ipynb) to index and query a `500,000` documents on a gpu.
+
 ## Acknowledgement
 `splade-index` was built on top of the [bm25s](https://github.com/xhluca/bm25s) library, and makes use of its excellent inverted index impementation, originally used by `bm25s` for its many variants of the BM25 ranking algorithm. 
 
