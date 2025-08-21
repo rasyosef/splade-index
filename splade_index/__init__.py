@@ -90,7 +90,7 @@ class SPLADE:
         self,
         dtype="float32",
         int_dtype="int32",
-        backend: Literal["auto", "numpy", "numba"] = "auto",
+        backend: Literal["auto", "numpy", "numba"] = "numpy",
     ):
         """
         SPLADE initialization.
@@ -104,7 +104,7 @@ class SPLADE:
             The data type of the indices in the BM25 scores.
 
         backend : str
-            The backend used during retrieval. By default, it is set to "auto". You can also select `backend="numba"`
+            The backend used during retrieval. By default, it is set to "numpy". You can also select `backend="numba"`
             to use the numba backend, which requires the numba library. If you select `backend="auto"`,
             the function will use the numba backend if it is available, otherwise it will use the numpy
             backend.
@@ -185,6 +185,7 @@ class SPLADE:
         chunk_size: int = 128,
         show_progress=True,
         leave_progress=False,
+        compile_numba_code=False,
     ):
         """
         Given a `corpus` of documents, create the SPLADE index.
@@ -206,6 +207,12 @@ class SPLADE:
 
         leave_progress : bool
             If True, the progress bars will remain after the function completes.
+
+        compile_numba_code : bool
+            If True, and if the backend is set to `numba`, this will initiate jit-compilation after
+            indexing is complete, so that the first query will have not be affected by latency overhead
+            caused by the compilation of numba code.
+
         """
         import scipy.sparse as sp
 
@@ -246,7 +253,7 @@ class SPLADE:
         # we create unique token IDs from the vocab_dict for faster lookup
         self.unique_token_ids_set = set(token_ids)
 
-        if self.backend == "numba":
+        if self.backend == "numba" and compile_numba_code:
             # to initiate jit-compilation
             _ = self.retrieve(
                 ["dummy query"],
