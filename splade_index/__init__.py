@@ -1,14 +1,13 @@
 import warnings
 
 from concurrent.futures import ThreadPoolExecutor
-from collections import Counter
 from functools import partial
 
 import os
 import logging
 from pathlib import Path
 import json
-from typing import Any, Tuple, Dict, Iterable, List, NamedTuple, Union, Literal
+from typing import List, NamedTuple, Literal
 
 import numpy as np
 
@@ -209,9 +208,9 @@ class SPLADE:
             If True, the progress bars will remain after the function completes.
 
         compile_numba_code : bool
-            If True, and if the backend is set to `numba`, this will initiate jit-compilation after
-            indexing is complete, so that the first query will have not be affected by latency overhead
-            caused by the compilation of numba code.
+            If True, and if the backend is set to `numba`, this will run a dummy query in order to initiate jit-compilation of
+            the numba code after indexing is complete, so that the first query will not be affected by latency overhead
+            due to compilation of numba code. It is set to True by default.
 
         """
         import scipy.sparse as sp
@@ -345,7 +344,7 @@ class SPLADE:
         leave_progress: bool = False,
         n_threads: int = 0,
         chunksize: int = 50,
-        backend_selection: str = "auto",
+        backend_selection: Literal["auto", "numpy", "pytorch", "numba"] = "auto",
     ):
         """
         Retrieve the top-k documents for each query (tokenized).
@@ -386,7 +385,7 @@ class SPLADE:
             Number of batches to process in each job in the multiprocessing pool.
 
         backend_selection : str
-            The backend to use for the top-k retrieval. Choose from "auto", "numpy", "pytorch".
+            The backend to use for the top-k retrieval. Choose from "auto", "numpy", "pytorch", "numba".
             If "auto", it will use PyTorch if it is available, otherwise it will use numpy.
 
         weight_mask : np.ndarray

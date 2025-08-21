@@ -20,13 +20,6 @@ You can install `splade-index` with pip:
 pip install splade-index
 ```
 
-Recommended (but optional) dependencies:
-
-```bash
-# To speed up the top-k selection process, you can install `jax`
-pip install "jax[cpu]"
-```
-
 ## Quickstart
 
 Here is a simple example of how to use `splade-index`:
@@ -106,7 +99,7 @@ You can use SPLADE-Index with any splade model from huggingface hub such as the 
 |[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|33.2|
 |[rasyosef/splade-tiny](https://huggingface.co/rasyosef/splade-tiny)|4.4M|30.9|
 
-## Citation
+<!-- ## Citation
 
 You can refer to the library with this BibTeX:
 
@@ -116,5 +109,5 @@ You can refer to the library with this BibTeX:
   author={Yosef Worku Alemneh},
   url={https://github.com/rasyosef/splade-index},
   year={2025}
-}
-```
+} 
+``` -->
