@@ -339,7 +339,7 @@ class SPLADE:
         k: int = 10,
         batch_size: int = 32,
         sorted: bool = True,
-        return_as: str = "tuple",
+        return_as: Literal["tuple", "documents", "doc_ids"] = "tuple",
         show_progress: bool = True,
         leave_progress: bool = False,
         n_threads: int = 0,
@@ -369,7 +369,7 @@ class SPLADE:
             `documents` and `scores`, which can be accessed as `result.documents` and
             `result.scores`, or by unpacking, e.g. `documents, scores = retrieve(...)`.
             If `return_as="doc_ids"`, only the ids of the retrieved documents will be returned.
-            If return_as="documents", only the retrieved documents will be returned.
+            If `return_as="documents"`, only the retrieved documents will be returned.
 
         show_progress : bool
             If True, a progress bar will be shown. If False, no progress bar will be shown.
