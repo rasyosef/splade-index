@@ -65,16 +65,16 @@ reloaded_retriever = splade_index.SPLADE.load("animal_index_splade", model=model
 
 ## Performance
 
-`splade-index` with a `numba` backend gives `47%` faster query time on average than the [pyseismic-lsr](https://github.com/TusKANNy/seismic) library, which is "an Efficient Inverted Index for Approximate Retrieval", all while `splade-index` does exact retrieval with no approximations involved. 
+`splade-index` with a `numba` backend gives `45%` faster query time on average than the [pyseismic-lsr](https://github.com/TusKANNy/seismic) library, which is "an Efficient Inverted Index for Approximate Retrieval", all while `splade-index` does exact retrieval with no approximations involved. 
 
 The query latency values shown include the query encoding times using the `naver/splade-v3-distilbert` SPLADE sparse encoder model.  
 
 |Library|Latency per query (in miliseconds)|
 |:-|:-|
-|`splade-index` (with `numba` backend)|**1.74 ms**|
-|`splade-index` (with `pytorch` backend)|2.71 ms|
-|`splade-index` (with `numpy` backend)|2.72 ms|
-|`pyseismic-lsr`|3.31 ms|
+|`splade-index` (with `numba` backend)|**1.77 ms**|
+|`splade-index` (with `numpy` backend)|2.44 ms|
+|`splade-index` (with `pytorch` backend)|2.61 ms|
+|`pyseismic-lsr`|3.24 ms|
 
 The tests were conducted using **`100,231`** documents and **`5,000`** queries from the [sentence-transformers/natural-questions](https://huggingface.co/datasets/sentence-transformers/natural-questions) dataset, and an NVIDIA Tesla T4 16GB GPU on Google Colab. 
 
