@@ -184,7 +184,7 @@ class SPLADE:
         chunk_size: int = 128,
         show_progress=True,
         leave_progress=False,
-        compile_numba_code=False,
+        compile_numba_code=True,
     ):
         """
         Given a `corpus` of documents, create the SPLADE index.
