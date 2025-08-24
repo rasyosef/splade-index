@@ -63,6 +63,85 @@ import splade_index
 reloaded_retriever = splade_index.SPLADE.load("animal_index_splade", model=model)
 ```
 
+
+## Hugging Face Integration
+
+`splade-index` can naturally work with Hugging Face's `huggingface_hub`, allowing you to load and save your index to the model hub.
+
+First, make sure you have a valid [access token for the Hugging Face model hub](https://huggingface.co/settings/tokens). This is needed to save models to the hub, or to load private models. Once you created it, you can add it to your environment variables:
+
+```bash
+export HF_TOKEN="hf_..."
+```
+
+Now, let's install the `huggingface_hub` library:
+
+```bash
+pip install huggingface_hub
+```
+
+Let's see how to use `SPLADE.save_to_hub` to save a SPLADE index to the Hugging Face model hub:
+
+```python
+import os
+from sentence_transformers import SparseEncoder
+from splade_index import SPLADE
+
+# Download a SPLADE model from the 🤗 Hub
+model = SparseEncoder("rasyosef/splade-tiny")
+
+# Create your corpus here
+corpus = [
+    "a cat is a feline and likes to purr",
+    "a dog is the human's best friend and loves to play",
+    "a bird is a beautiful animal that can fly",
+    "a fish is a creature that lives in water and swims",
+]
+
+# Create the SPLADE retriever and index the corpus
+retriever = SPLADE()
+retriever.index(model=model, documents=corpus)
+
+# Set your username and token
+user = "your-username"
+token = os.environ["HF_TOKEN"]
+repo_id = f"{user}/splade-index-animals"
+
+# Save the index on your huggingface account
+retriever.save_to_hub(repo_id, token=token)
+# You can also save it publicly with private=False
+```
+
+Then, you can use the following code to load a SPLADE index from the Hugging Face model hub:
+
+```python
+import os
+from sentence_transformers import SparseEncoder
+from splade_index import SPLADE
+
+# Download a SPLADE model from the 🤗 Hub
+model = SparseEncoder("rasyosef/splade-tiny")
+
+# Set your huggingface username and token
+user = "your-username"
+token = os.environ["HF_TOKEN"]
+repo_id = f"{user}/splade-index-animals"
+
+# Load a SPLADE index from the Hugging Face model hub
+retriever = SPLADE.load_from_hub(repo_id, model=model, token=token)
+
+# Query the corpus
+queries = ["does the fish purr like a cat?"]
+
+# Get top-k results as a tuple of (doc ids, documents, scores). All three are arrays of shape (n_queries, k).
+results = retriever.retrieve(queries, k=2)
+doc_ids, result_docs, scores = results.doc_ids, results.documents, results.scores
+
+for i in range(doc_ids.shape[1]):
+    doc_id, doc, score = doc_ids[0, i], result_docs[0, i], scores[0, i]
+    print(f"Rank {i+1} (score: {score:.2f}) (doc_id: {doc_id}): {doc}")
+```
+
 ## Performance
 
 `splade-index` with a `numba` backend gives `45%` faster query time on average than the [pyseismic-lsr](https://github.com/TusKANNy/seismic) library, which is "an Efficient Inverted Index for Approximate Retrieval", all while `splade-index` does exact retrieval with no approximations involved. 
