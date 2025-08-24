@@ -23,6 +23,11 @@ try:
 except ImportError:
     _retrieve_numba_functional = None
 
+import shutil
+import tempfile
+
+from .hf import README_TEMPLATE, can_save_locally
+
 
 def _faketqdm(iterable, *args, **kwargs):
     return iterable
@@ -784,3 +789,184 @@ class SPLADE:
                 splade_obj.corpus = corpus
 
         return splade_obj
+
+    def save_to_hub(
+        self,
+        repo_id: str,
+        token: str = None,
+        local_dir: str = None,
+        private=True,
+        commit_message: str = "Update Splade Index",
+        overwrite_local: bool = False,
+        include_readme: bool = True,
+        allow_pickle: bool = False,
+        **kwargs,
+    ):
+        """
+        This function saves the SPLADE index to the Hugging Face Hub.
+
+        Parameters
+        ----------
+
+        repo_id: str
+            The name of the repository to save the model to.
+            the `repo_id` should be in the form of "username/repo_name".
+
+        token: str
+            The Hugging Face API token to use.
+
+        local_dir: str
+            The directory to save the model to before pushing to the Hub.
+            If it is not empty and `overwrite_local` is False, it will fall
+            back to saving to a temporary directory.
+
+        private: bool
+            Whether the repository should be private or not. Default is True.
+
+        commit_message: str
+            The commit message to use when saving the model.
+
+        overwrite_local: bool
+            Whether to overwrite the existing local directory if it exists.
+
+        include_readme: bool
+            Whether to include a default README file with the model.
+
+        allow_pickle: bool
+            Whether to allow pickling the model. Default is False.
+
+        kwargs: dict
+            Additional keyword arguments to pass to `HfApi.upload_folder` call.
+        """
+
+        try:
+            from huggingface_hub import HfApi
+        except ImportError:
+            raise ImportError(
+                "Please install the huggingface_hub package to use the HuggingFace integrations for splade-index. You can install it via `pip install huggingface_hub`."
+            )
+
+        api = HfApi(token=token)
+        repo_url = api.create_repo(
+            repo_id=repo_id,
+            token=api.token,
+            private=private,
+            repo_type="model",
+            exist_ok=True,
+        )
+        repo_id = repo_url.repo_id
+
+        username, repo_name = repo_id.split("/", 1)
+
+        saving_locally = can_save_locally(local_dir, overwrite_local)
+        if saving_locally:
+            os.makedirs(local_dir, exist_ok=True)
+            save_dir = local_dir
+        else:
+            # save to a temporary directory otherwise
+            save_dir = tempfile.mkdtemp()
+
+        self.save(save_dir, allow_pickle=allow_pickle)
+        # if we include the README, write it to the directory
+        if include_readme:
+            num_docs = self.scores["num_docs"]
+            num_tokens = self.scores["data"].shape[0]
+            avg_tokens_per_doc = round(num_tokens / num_docs, 2)
+
+            results = README_TEMPLATE.format(
+                # username=username,
+                # repo_name=repo_name,
+                version=__version__,
+                num_docs=num_docs,
+                num_tokens=num_tokens,
+                avg_tokens_per_doc=avg_tokens_per_doc,
+            )
+
+            with open(os.path.join(save_dir, "README.md"), "w") as f:
+                f.write(results)
+
+        # push content of the temporary directory to the repo
+        api.upload_folder(
+            repo_id=repo_id,
+            commit_message=commit_message,
+            token=api.token,
+            folder_path=save_dir,
+            repo_type=repo_url.repo_type,
+            **kwargs,
+        )
+        # delete the temporary directory if it was created
+        if not saving_locally:
+            shutil.rmtree(save_dir)
+
+        return repo_url
+
+    @classmethod
+    def load_from_hub(
+        cls,
+        repo_name: str,
+        model,
+        revision=None,
+        token=None,
+        local_dir=None,
+        load_corpus=True,
+        mmap=False,
+        allow_pickle=False,
+    ):
+        """
+        This function loads the BM25 model from the Hugging Face Hub.
+
+        Parameters
+        ----------
+
+        repo_name: str
+            The name of the repository to load the model from.
+
+        model: SparseEncoder
+            A sentence-transformers SPLADE model (The same one used to create the index)
+
+        revision: str
+            The revision of the model to load.
+
+        token: str
+            The Hugging Face API token to use.
+
+        local_dir: str
+            The local dir where the model will be stored after downloading.
+
+        load_corpus: bool
+            Whether to load the corpus of documents saved with the model, if present.
+
+        mmap: bool
+            Whether to memory-map the model. Default is False, which loads the index
+            (and potentially corpus) into memory.
+
+        allow_pickle: bool
+            Whether to allow pickling the model. Default is False.
+        """
+
+        try:
+            from huggingface_hub import HfApi
+        except ImportError:
+            raise ImportError(
+                "Please install the huggingface_hub package to use the HuggingFace integrations for splade-index. You can install it via `pip install huggingface_hub`."
+            )
+
+        api = HfApi(token=token)
+        # check if the model exists
+        repo_url = api.repo_info(repo_name)
+        if repo_url is None:
+            raise ValueError(f"Model {repo_name} not found on the Hugging Face Hub.")
+
+        snapshot = api.snapshot_download(
+            repo_name, revision=revision, token=token, local_dir=local_dir
+        )
+        if snapshot is None:
+            raise ValueError(f"Model {repo_name} not found on the Hugging Face Hub.")
+
+        return cls.load(
+            save_dir=snapshot,
+            model=model,
+            load_corpus=load_corpus,
+            mmap=mmap,
+            allow_pickle=allow_pickle,
+        )
