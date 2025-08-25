@@ -13,11 +13,11 @@ tags:
 
 # Splade-Index
 
-This is an index created with the [`splade-index` library](https://github.com/rasyosef/splade-index) (version `{version}`)
+This is an index created with the [splade-index](https://github.com/rasyosef/splade-index) library (version `{version}`)
 
 ## Installation
 
-You can install the `bm25s` library with `pip`:
+You can install the `splade-index` library with `pip`:
 
 ```bash
 pip install "splade-index=={version}"
@@ -38,7 +38,7 @@ import os
 from sentence_transformers import SparseEncoder
 from splade_index import SPLADE
 
-# Download the SPLADE model used to create the index, from the 🤗 Hub
+# Download the SPLADE model that was used to create the index from the HuggingFace Hub
 model_id = "the-splade-model-id" # Enter the splade model id
 model = SparseEncoder(model_id)
 
