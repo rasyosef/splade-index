@@ -170,13 +170,13 @@ The tests were conducted using **`100,231`** documents and **`5,000`** queries f
 
 You can use SPLADE-Index with any splade model from huggingface hub such as the ones below.
 
-||Size (# Params)|MRR@10 (MS MARCO dev)|
-|:---|:----|:-------------------|
-|[naver/splade-v3](https://huggingface.co/naver/splade-v3)|110M|40.2|
-|[naver/splade-v3-distilbert](https://huggingface.co/naver/splade-v3-distilbert)|67.0M|38.7|
-|[rasyosef/splade-small](https://huggingface.co/rasyosef/splade-small)|28.8M|35.4|
-|[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|34.1|
-|[rasyosef/splade-tiny](https://huggingface.co/rasyosef/splade-tiny)|4.4M|30.9|
+||Size (# Params)|MSMARCO MRR@10|BEIR-13 avg nDCG@10|
+|:---|:----|:-------------------|:------------------|
+|[naver/splade-v3](https://huggingface.co/naver/splade-v3)|110M|40.2|51.7|
+|[naver/splade-v3-distilbert](https://huggingface.co/naver/splade-v3-distilbert)|67.0M|38.7|50.0|
+|[rasyosef/splade-small](https://huggingface.co/rasyosef/splade-small)|28.8M|35.4|46.6|
+|[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|34.1|44.5|
+|[rasyosef/splade-tiny](https://huggingface.co/rasyosef/splade-tiny)|4.4M|30.9|40.6|
 
 <!-- ## Citation
 
