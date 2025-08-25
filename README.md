@@ -163,9 +163,6 @@ The tests were conducted using **`100,231`** documents and **`5,000`** queries f
 
 - [`indexing_and_querying_500k_docs_with_gpu.ipynb`](examples/indexing_and_querying_500k_docs_with_gpu.ipynb) to index and query a `500,000` documents on a gpu.
 
-## Acknowledgement
-`splade-index` was built on top of the [bm25s](https://github.com/xhluca/bm25s) library, and makes use of its excellent inverted index impementation, originally used by `bm25s` for its many variants of the BM25 ranking algorithm. 
-
 ### SPLADE Models
 
 You can use SPLADE-Index with any splade model from huggingface hub such as the ones below.
@@ -177,6 +174,9 @@ You can use SPLADE-Index with any splade model from huggingface hub such as the 
 |[rasyosef/splade-small](https://huggingface.co/rasyosef/splade-small)|28.8M|35.4|46.6|
 |[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|34.1|44.5|
 |[rasyosef/splade-tiny](https://huggingface.co/rasyosef/splade-tiny)|4.4M|30.9|40.6|
+
+## Acknowledgement
+`splade-index` was built on top of the [bm25s](https://github.com/xhluca/bm25s) library, and makes use of its excellent inverted index impementation, originally used by `bm25s` for its many variants of the BM25 ranking algorithm. 
 
 <!-- ## Citation
 
