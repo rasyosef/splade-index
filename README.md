@@ -174,8 +174,8 @@ You can use SPLADE-Index with any splade model from huggingface hub such as the 
 |:---|:----|:-------------------|
 |[naver/splade-v3](https://huggingface.co/naver/splade-v3)|110M|40.2|
 |[naver/splade-v3-distilbert](https://huggingface.co/naver/splade-v3-distilbert)|67.0M|38.7|
-|[rasyosef/splade-small](https://huggingface.co/rasyosef/splade-small)|28.8M|35.2|
-|[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|33.2|
+|[rasyosef/splade-small](https://huggingface.co/rasyosef/splade-small)|28.8M|35.4|
+|[rasyosef/splade-mini](https://huggingface.co/rasyosef/splade-mini)|11.2M|34.1|
 |[rasyosef/splade-tiny](https://huggingface.co/rasyosef/splade-tiny)|4.4M|30.9|
 
 <!-- ## Citation
