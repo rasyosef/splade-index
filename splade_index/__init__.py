@@ -632,11 +632,27 @@ class SPLADE:
             do not fit into memory.
         """
         save_dir = Path(save_dir)
-
         csc_index_path = save_dir / csc_index_name
-
         mmap_mode = "r" if mmap else None
-        csc_index = np.load(csc_index_path, mmap_mode=mmap_mode)
+        csc_index = None
+
+        if mmap:
+            from zipfile import ZipFile
+
+            temp_dir = save_dir / "temp"
+
+            with ZipFile(csc_index_path, "r") as f:
+                f.extract("data.npy", temp_dir)
+                f.extract("indices.npy", temp_dir)
+                f.extract("indptr.npy", temp_dir)
+
+            csc_index = {
+                "data": np.load(temp_dir / "data.npy", mmap_mode=mmap_mode),
+                "indices": np.load(temp_dir / "indices.npy", mmap_mode=mmap_mode),
+                "indptr": np.load(temp_dir / "indptr.npy", mmap_mode=mmap_mode),
+            }
+        else:
+            csc_index = np.load(csc_index_path)
 
         scores = {}
         scores["data"] = csc_index["data"]
@@ -740,20 +756,22 @@ class SPLADE:
 
         if load_corpus:
             # load the model from the snapshot
-            # if a corpus.jsonl file exists, load it
+            # if a corpus.npz file exists, load it
             corpus_path = save_dir / corpus_name
             if os.path.exists(corpus_path):
                 mmap_mode = "r" if mmap else None
-                if mmap_mode:
+                if mmap:
                     from zipfile import ZipFile
 
+                    temp_dir = save_dir / "temp"
+
                     with ZipFile(corpus_path, "r") as f:
-                        f.extract("corpus.npy", save_dir)
-                    new_corpus_path = save_dir / "corpus.npy"
-                    corpus = np.load(new_corpus_path, mmap_mode=mmap_mode)
+                        f.extract("corpus.npy", temp_dir)
+                    decompressed_corpus_path = temp_dir / "corpus.npy"
+                    corpus = np.load(decompressed_corpus_path, mmap_mode=mmap_mode)
                     splade_obj.corpus = corpus
                 else:
-                    corpus = np.load(corpus_path, mmap_mode=mmap_mode)["corpus"]
+                    corpus = np.load(corpus_path)["corpus"]
                     splade_obj.corpus = corpus
 
         return splade_obj
