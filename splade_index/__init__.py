@@ -544,13 +544,10 @@ class SPLADE:
     def save(
         self,
         save_dir,
-        data_name="data.csc.index.npy",
-        indices_name="indices.csc.index.npy",
-        indptr_name="indptr.csc.index.npy",
+        csc_index_name="csc.index.npz",
+        corpus_name="corpus.npz",
         vocab_name="vocab.index.json",
         params_name="params.index.json",
-        corpus_name="corpus.npy",
-        allow_pickle=False,
     ):
         """
         Save the BM25S index to the `save_dir` directory. This will save the scores array,
@@ -561,40 +558,31 @@ class SPLADE:
         save_dir : str
             The directory where the BM25S index will be saved.
 
+        csc_index_name : str
+            The name of the file that contains the csc index arrays (data, indices, indptr).
+
         corpus_name : str
             The name of the file that will contain the corpus.
-
-        data_name : str
-            The name of the file that will contain the data array.
-
-        indices_name : str
-            The name of the file that will contain the indices array.
-
-        indptr_name : str
-            The name of the file that will contain the indptr array.
 
         vocab_name : str
             The name of the file that will contain the vocab dictionary.
 
         params_name : str
             The name of the file that will contain the parameters.
-
-        allow_pickle : bool
-            If True, the arrays will be saved using pickle. If False, the arrays will be saved
-            in a more efficient format, but they will not be readable by older versions of numpy.
         """
         # Save the self.vocab_dict and self.score_matrix to the save_dir
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
 
         # Save the scores arrays
-        data_path = save_dir / data_name
-        indices_path = save_dir / indices_name
-        indptr_path = save_dir / indptr_name
+        csc_index_path = save_dir / csc_index_name
 
-        np.save(data_path, self.scores["data"], allow_pickle=allow_pickle)
-        np.save(indices_path, self.scores["indices"], allow_pickle=allow_pickle)
-        np.save(indptr_path, self.scores["indptr"], allow_pickle=allow_pickle)
+        np.savez_compressed(
+            csc_index_path,
+            data=self.scores["data"],
+            indices=self.scores["indices"],
+            indptr=self.scores["indptr"],
+        )
 
         # Save the vocab dictionary
         vocab_path = save_dir / vocab_name
@@ -618,17 +606,14 @@ class SPLADE:
         corpus_path = save_dir / corpus_name
 
         if corpus is not None:
-            np.save(corpus_path, corpus, allow_pickle=allow_pickle)
+            np.savez_compressed(corpus_path, corpus=corpus)
 
     def load_scores(
         self,
         save_dir,
-        data_name="data.csc.index.npy",
-        indices_name="indices.csc.index.npy",
-        indptr_name="indptr.csc.index.npy",
+        csc_index_name="csc.index.npz",
         num_docs=None,
         mmap=False,
-        allow_pickle=False,
     ):
         """
         Load the scores arrays from the BM25 index. This is useful if you want to load
@@ -638,41 +623,34 @@ class SPLADE:
 
         Parameters
         ----------
-        data_name : str
-            The name of the file that contains the data array.
-
-        indices_name : str
-            The name of the file that contains the indices array.
-
-        indptr_name : str
-            The name of the file that contains the indptr array.
+        csc_index_name : str
+            The name of the file that contains the csc index arrays (data, indices, indptr).
 
         mmap : bool
             Whether to use Memory-map for the np.load function. If false, the arrays will be loaded into memory.
             If True, the arrays will be memory-mapped, using 'r' mode. This is useful for very large arrays that
             do not fit into memory.
-
-        allow_pickle : bool
-            If True, the arrays will be loaded using pickle. If False, the arrays will be loaded
-            in a more efficient format, but they will not be readable by older versions of numpy.
         """
         save_dir = Path(save_dir)
 
-        data_path = save_dir / data_name
-        indices_path = save_dir / indices_name
-        indptr_path = save_dir / indptr_name
+        csc_index_path = save_dir / csc_index_name
 
         mmap_mode = "r" if mmap else None
-        data = np.load(data_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode)
-        indices = np.load(indices_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode)
-        indptr = np.load(indptr_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode)
+        csc_index = np.load(csc_index_path, mmap_mode=mmap_mode)
 
         scores = {}
-        scores["data"] = data
-        scores["indices"] = indices
-        scores["indptr"] = indptr
+        scores["data"] = csc_index["data"]
+        scores["indices"] = csc_index["indices"]
+        scores["indptr"] = csc_index["indptr"]
         scores["num_docs"] = num_docs
 
+        unique_token_ids = [
+            i
+            for i in range(len(scores["indptr"]) - 1)
+            if scores["indptr"][i] < scores["indptr"][i + 1]
+        ]
+
+        self.unique_token_ids_set = set(unique_token_ids)
         self.scores = scores
 
     @classmethod
@@ -680,12 +658,10 @@ class SPLADE:
         cls,
         save_dir,
         model,
-        data_name="data.csc.index.npy",
-        indices_name="indices.csc.index.npy",
-        indptr_name="indptr.csc.index.npy",
+        csc_index_name="csc.index.npz",
         vocab_name="vocab.index.json",
         params_name="params.index.json",
-        corpus_name="corpus.npy",
+        corpus_name="corpus.npz",
         load_corpus=True,
         mmap=False,
         allow_pickle=False,
@@ -704,14 +680,8 @@ class SPLADE:
         model: SparseEncoder
             A sentence-transformers SPLADE model (The same one used to create the index)
 
-        data_name : str
-            The name of the file that contains the data array.
-
-        indices_name : str
-            The name of the file that contains the indices array.
-
-        indptr_name : str
-            The name of the file that contains the indptr array.
+        csc_index_name : str
+            The name of the file that contains the csc index arrays (data, indices, indptr).
 
         vocab_name : str
             The name of the file that contains the vocab dictionary.
@@ -763,18 +733,14 @@ class SPLADE:
         splade_obj = cls(**params)
         splade_obj.vocab_dict = vocab_dict
         splade_obj._original_version = original_version
-        splade_obj.unique_token_ids_set = set(splade_obj.vocab_dict.values())
 
         splade_obj.model = model
 
         splade_obj.load_scores(
             save_dir=save_dir,
-            data_name=data_name,
-            indices_name=indices_name,
-            indptr_name=indptr_name,
+            csc_index_name=csc_index_name,
             mmap=mmap,
             num_docs=num_docs,
-            allow_pickle=allow_pickle,
         )
 
         if load_corpus:
@@ -783,9 +749,7 @@ class SPLADE:
             corpus_path = save_dir / corpus_name
             if os.path.exists(corpus_path):
                 mmap_mode = "r" if mmap else None
-                corpus = np.load(
-                    corpus_path, allow_pickle=allow_pickle, mmap_mode=mmap_mode
-                )
+                corpus = np.load(corpus_path, mmap_mode=mmap_mode)["corpus"]
                 splade_obj.corpus = corpus
 
         return splade_obj
@@ -799,7 +763,6 @@ class SPLADE:
         commit_message: str = "Update Splade Index",
         overwrite_local: bool = False,
         include_readme: bool = True,
-        allow_pickle: bool = False,
         **kwargs,
     ):
         """
@@ -832,9 +795,6 @@ class SPLADE:
         include_readme: bool
             Whether to include a default README file with the model.
 
-        allow_pickle: bool
-            Whether to allow pickling the model. Default is False.
-
         kwargs: dict
             Additional keyword arguments to pass to `HfApi.upload_folder` call.
         """
@@ -866,7 +826,7 @@ class SPLADE:
             # save to a temporary directory otherwise
             save_dir = tempfile.mkdtemp()
 
-        self.save(save_dir, allow_pickle=allow_pickle)
+        self.save(save_dir)
         # if we include the README, write it to the directory
         if include_readme:
             num_docs = self.scores["num_docs"]
@@ -910,7 +870,6 @@ class SPLADE:
         local_dir=None,
         load_corpus=True,
         mmap=False,
-        allow_pickle=False,
     ):
         """
         This function loads the BM25 model from the Hugging Face Hub.
@@ -939,9 +898,6 @@ class SPLADE:
         mmap: bool
             Whether to memory-map the model. Default is False, which loads the index
             (and potentially corpus) into memory.
-
-        allow_pickle: bool
-            Whether to allow pickling the model. Default is False.
         """
 
         try:
@@ -968,5 +924,4 @@ class SPLADE:
             model=model,
             load_corpus=load_corpus,
             mmap=mmap,
-            allow_pickle=allow_pickle,
         )
