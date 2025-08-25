@@ -46,7 +46,7 @@ else:
 from . import selection
 from .version import __version__
 
-logger = logging.getLogger("bm25s")
+logger = logging.getLogger("splade_index")
 logger.setLevel(logging.DEBUG)
 
 
@@ -664,7 +664,6 @@ class SPLADE:
         corpus_name="corpus.npz",
         load_corpus=True,
         mmap=False,
-        allow_pickle=False,
         load_vocab=True,
     ):
         """
@@ -700,13 +699,9 @@ class SPLADE:
             If True, the arrays will be memory-mapped, using 'r' mode. This is useful for very large arrays that
             do not fit into memory.
 
-        allow_pickle : bool
-            If True, the arrays will be loaded using pickle. If False, the arrays will be loaded
-            in a more efficient format, but they will not be readable by older versions of numpy.
-
         load_vocab : bool
             If True, the vocab dictionary will be loaded from the `vocab_name` file. If False, the vocab dictionary
-            will not be loaded, and the `vocab_dict` attribute of the BM25 object will be set to None.
+            will not be loaded, and the `vocab_dict` attribute of the SPLADE object will be set to None.
         """
         if not isinstance(mmap, bool):
             raise ValueError("`mmap` must be a boolean")
@@ -834,8 +829,8 @@ class SPLADE:
             avg_tokens_per_doc = round(num_tokens / num_docs, 2)
 
             results = README_TEMPLATE.format(
-                # username=username,
-                # repo_name=repo_name,
+                username=username,
+                repo_name=repo_name,
                 version=__version__,
                 num_docs=num_docs,
                 num_tokens=num_tokens,

@@ -29,6 +29,28 @@ pip install "splade-index[full]=={version}"
 pip install huggingface_hub
 ```
 
+## Load this Index
+
+You can use the following code to load this SPLADE index from Hugging Face hub:
+
+```python
+import os
+from sentence_transformers import SparseEncoder
+from splade_index import SPLADE
+
+# Download the SPLADE model used to create the index, from the 🤗 Hub
+model_id = "the-splade-model-id" # Enter the splade model id
+model = SparseEncoder(model_id)
+
+# Set your huggingface token if repo is private
+token = os.environ["HF_TOKEN"]
+
+repo_id = "{username}/{repo_name}"
+
+# Load a SPLADE index from the Hugging Face model hub
+retriever = SPLADE.load_from_hub(repo_id, model=model, token=token)
+```
+
 ## Stats
 
 This dataset was created using the following data:
