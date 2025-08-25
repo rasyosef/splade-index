@@ -44,7 +44,6 @@ model = SparseEncoder(model_id)
 
 # Set your huggingface token if repo is private
 token = os.environ["HF_TOKEN"]
-
 repo_id = "{username}/{repo_name}"
 
 # Load a SPLADE index from the Hugging Face model hub
