@@ -744,8 +744,17 @@ class SPLADE:
             corpus_path = save_dir / corpus_name
             if os.path.exists(corpus_path):
                 mmap_mode = "r" if mmap else None
-                corpus = np.load(corpus_path, mmap_mode=mmap_mode)["corpus"]
-                splade_obj.corpus = corpus
+                if mmap_mode:
+                    from zipfile import ZipFile
+
+                    with ZipFile(corpus_path, "r") as f:
+                        f.extract("corpus.npy", save_dir)
+                    new_corpus_path = save_dir / "corpus.npy"
+                    corpus = np.load(new_corpus_path, mmap_mode=mmap_mode)
+                    splade_obj.corpus = corpus
+                else:
+                    corpus = np.load(corpus_path, mmap_mode=mmap_mode)["corpus"]
+                    splade_obj.corpus = corpus
 
         return splade_obj
 
