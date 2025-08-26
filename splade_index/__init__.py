@@ -224,48 +224,44 @@ class SPLADE:
             due to compilation of numba code. It is set to True by default.
 
         """
-        import scipy.sparse as sp
 
-        document_embeddings = model.encode_document(
+        score_matrix = model.encode_document(
             documents,
             batch_size=batch_size,
             chunk_size=chunk_size,
             save_to_cpu=True,
             show_progress_bar=show_progress,
-        ).coalesce()
+        ).to_sparse_csc()
 
-        doc_ids = document_embeddings.indices()[0].numpy()
-        token_ids = document_embeddings.indices()[1].numpy()
-        token_weights = document_embeddings.values().numpy()
+        data = score_matrix.values().numpy()
+        indices = score_matrix.row_indices().numpy()
+        indptr = score_matrix.ccol_indices().numpy()
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
-        n_vocab = len(vocab_dict)
-
-        score_matrix = sp.csc_matrix(
-            (token_weights, (doc_ids, token_ids)),
-            shape=(num_docs, n_vocab),
-            dtype=self.dtype,
-        )
 
         scores = {
-            "data": score_matrix.data,
-            "indices": score_matrix.indices,
-            "indptr": score_matrix.indptr,
+            "data": data,
+            "indices": indices,
+            "indptr": indptr,
             "num_docs": num_docs,
         }
 
         self.scores = scores
         self.vocab_dict = vocab_dict
         self.model = model
-        self.corpus = np.array(documents)
+        self.corpus = np.asarray(documents)
         if document_ids is not None:
-            self.document_ids = np.array(document_ids)
+            self.document_ids = np.asarray(document_ids)
         else:
             self.document_ids = np.arange(len(self.corpus))
 
         # we create unique token IDs from the vocab_dict for faster lookup
-        self.unique_token_ids_set = set(token_ids)
+        unique_token_ids = [
+            i for i in range(len(indptr) - 1) if indptr[i] < indptr[i + 1]
+        ]
+
+        self.unique_token_ids_set = set(unique_token_ids)
 
         if self.backend == "numba" and compile_numba_code:
             # to initiate jit-compilation
