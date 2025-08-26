@@ -7,7 +7,7 @@ import os
 import logging
 from pathlib import Path
 import json
-from typing import List, NamedTuple, Literal
+from typing import List, NamedTuple, Literal, Union
 
 import numpy as np
 
@@ -116,6 +116,7 @@ class SPLADE:
         self.dtype = dtype
         self.int_dtype = int_dtype
         self.corpus = None
+        self.document_ids = None
         self.model = None
         self._original_version = __version__
 
@@ -185,6 +186,7 @@ class SPLADE:
         self,
         model,
         documents: List[str],
+        document_ids: Union[List[int], List[str]] = None,
         batch_size: int = 32,
         chunk_size: int = 128,
         show_progress=True,
@@ -199,6 +201,10 @@ class SPLADE:
 
         documents: List[str]
             A list of documents to be indexed
+
+        document_ids: Union[List[int], List[str]]
+            Optional: The IDs of each or the documents to be indexed in the same order as `documents`. Defaults to None.
+            If it's not set, integers 0 up to len(documents)-1 will be used as the document_ids.
 
         batch_size: int
             The batch size used for the computation. Defaults to 32.
@@ -253,6 +259,10 @@ class SPLADE:
         self.vocab_dict = vocab_dict
         self.model = model
         self.corpus = np.array(documents)
+        if document_ids is not None:
+            self.document_ids = np.array(document_ids)
+        else:
+            self.document_ids = np.arange(len(self.corpus))
 
         # we create unique token IDs from the vocab_dict for faster lookup
         self.unique_token_ids_set = set(token_ids)
@@ -484,12 +494,18 @@ class SPLADE:
 
             if return_as == "tuple":
                 return Results(
-                    doc_ids=res[0], documents=self.corpus[res[0]], scores=res[1]
+                    doc_ids=self.document_ids[res[0]],
+                    documents=self.corpus[res[0]],
+                    scores=res[1],
                 )
             elif return_as == "documents":
                 return self.corpus[res]
+            elif return_as == "doc_ids":
+                return self.document_ids[res]
             else:
-                return res
+                raise ValueError(
+                    "`return_as` must be either 'tuple', 'doc_ids' or 'documents'"
+                )
 
         tqdm_kwargs = {
             "total": len(query_token_ids),
@@ -524,18 +540,18 @@ class SPLADE:
         scores, indices = zip(*out)
         scores, indices = np.array(scores), np.array(indices)
 
-        retrieved_docs = indices
+        retrieved_indices = indices
 
         if return_as == "tuple":
             return Results(
-                doc_ids=retrieved_docs,
-                documents=self.corpus[retrieved_docs],
+                doc_ids=self.document_ids[retrieved_indices],
+                documents=self.corpus[retrieved_indices],
                 scores=scores,
             )
         elif return_as == "documents":
-            return self.corpus[retrieved_docs]
+            return self.corpus[retrieved_indices]
         elif return_as == "doc_ids":
-            return retrieved_docs
+            return retrieved_indices
         else:
             raise ValueError(
                 "`return_as` must be either 'tuple', 'doc_ids' or 'documents'"
@@ -603,10 +619,11 @@ class SPLADE:
             json.dump(params, f, indent=4)
 
         corpus = self.corpus
+        document_ids = self.document_ids
         corpus_path = save_dir / corpus_name
 
         if corpus is not None:
-            np.savez_compressed(corpus_path, corpus=corpus)
+            np.savez_compressed(corpus_path, corpus=corpus, document_ids=document_ids)
 
     def load_scores(
         self,
@@ -767,12 +784,22 @@ class SPLADE:
 
                     with ZipFile(corpus_path, "r") as f:
                         f.extract("corpus.npy", temp_dir)
+                        f.extract("document_ids.npy", temp_dir)
+
                     decompressed_corpus_path = temp_dir / "corpus.npy"
+                    decompressed_doc_ids_path = temp_dir / "document_ids.npy"
+
                     corpus = np.load(decompressed_corpus_path, mmap_mode=mmap_mode)
+                    document_ids = np.load(
+                        decompressed_doc_ids_path, mmap_mode=mmap_mode
+                    )
+
                     splade_obj.corpus = corpus
+                    splade_obj.document_ids = document_ids
                 else:
-                    corpus = np.load(corpus_path)["corpus"]
-                    splade_obj.corpus = corpus
+                    loaded_corpus = np.load(corpus_path)
+                    splade_obj.corpus = loaded_corpus["corpus"]
+                    splade_obj.document_ids = loaded_corpus["document_ids"]
 
         return splade_obj
 
