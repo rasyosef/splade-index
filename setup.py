@@ -24,11 +24,11 @@ setup(
     author="Yosef Worku Alemneh",
     author_email="",
     url=f"https://github.com/rasyosef/splade-index",
-    description=f"An ultra-fast search index for SPLADE sparse retrieval models.",
+    description=f"An ultra-fast search index for SPLADE sparse neural retrieval models.",
     long_description=long_description,
     packages=find_packages(include=[f"{package_name}*"]),
     package_data={},
-    install_requires=["scipy", "numpy", "sentence-transformers>=5.0.0"],
+    install_requires=["numpy", "sentence-transformers>=5.0.0"],
     extras_require=extras_require,
     classifiers=[
         "Programming Language :: Python :: 3",

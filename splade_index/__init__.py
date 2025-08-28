@@ -102,10 +102,10 @@ class SPLADE:
         Parameters
         ----------
         dtype : str
-            The data type of the BM25 scores.
+            The data type of the similarity scores.
 
         int_dtype : str
-            The data type of the indices in the BM25 scores.
+            The data type of the indices in the scores.
 
         backend : str
             The backend used during retrieval. By default, it is set to "numpy". You can also select `backend="numba"`
@@ -256,7 +256,7 @@ class SPLADE:
         else:
             self.document_ids = np.arange(len(self.corpus))
 
-        # we create unique token IDs from the vocab_dict for faster lookup
+        # we create unique token IDs set for faster lookup
         unique_token_ids = [
             i for i in range(len(indptr) - 1) if indptr[i] < indptr[i + 1]
         ]
