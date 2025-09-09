@@ -161,7 +161,7 @@ The tests were conducted using **`100,231`** documents and **`5,000`** queries f
 
 - [`splade_index_usage_example.ipynb`](examples/splade_index_usage_example.ipynb) to index and query `1,000` documents on a cpu.
 
-- [`indexing_and_querying_500k_docs_with_gpu.ipynb`](examples/indexing_and_querying_500k_docs_with_gpu.ipynb) to index and query a `500,000` documents on a gpu.
+- [`indexing_and_querying_100k_docs_with_gpu.ipynb`](examples/indexing_and_querying_100k_docs_with_gpu.ipynb) to index and query a `100,000` documents on a gpu.
 
 ### SPLADE Models
 
