@@ -250,7 +250,7 @@ class SPLADE:
         self.scores = scores
         self.vocab_dict = vocab_dict
         self.model = model
-        self.corpus = np.asarray(documents)
+        self.corpus = np.asarray(documents, dtype=object)
         if document_ids is not None:
             self.document_ids = np.asarray(document_ids)
         else:
@@ -557,18 +557,18 @@ class SPLADE:
         self,
         save_dir,
         csc_index_name="csc.index.npz",
-        corpus_name="corpus.npz",
+        corpus_name="corpus.jsonl",
         vocab_name="vocab.index.json",
         params_name="params.index.json",
     ):
         """
-        Save the BM25S index to the `save_dir` directory. This will save the scores array,
+        Save the SPLADE index to the `save_dir` directory. This will save the scores array,
         the indices array, the indptr array, the vocab dictionary, and the parameters.
 
         Parameters
         ----------
         save_dir : str
-            The directory where the BM25S index will be saved.
+            The directory where the SPLADE index will be saved.
 
         csc_index_name : str
             The name of the file that contains the csc index arrays (data, indices, indptr).
@@ -594,6 +594,7 @@ class SPLADE:
             data=self.scores["data"],
             indices=self.scores["indices"],
             indptr=self.scores["indptr"],
+            document_ids=self.document_ids,
         )
 
         # Save the vocab dictionary
@@ -619,7 +620,20 @@ class SPLADE:
         corpus_path = save_dir / corpus_name
 
         if corpus is not None:
-            np.savez_compressed(corpus_path, corpus=corpus, document_ids=document_ids)
+            with open(corpus_path, "wt", encoding="utf-8") as f:
+                for doc_id, doc in zip(document_ids, corpus):
+                    doc = {"id": doc_id, "text": doc}
+                    try:
+                        doc_str = json_functions.dumps(doc, ensure_ascii=False)
+                    except Exception as e:
+                        logging.warning(
+                            f"Error saving document with doc_id {doc_id}: {e}"
+                        )
+                    else:
+                        f.write(doc_str + "\n")
+            # also save corpus.mmindex
+            mmidx = utils.corpus.find_newline_positions(save_dir / corpus_name)
+            utils.corpus.save_mmindex(mmidx, path=save_dir / corpus_name)
 
     def load_scores(
         self,
@@ -658,11 +672,15 @@ class SPLADE:
                 f.extract("data.npy", temp_dir)
                 f.extract("indices.npy", temp_dir)
                 f.extract("indptr.npy", temp_dir)
+                f.extract("document_ids.npy", temp_dir)
 
             csc_index = {
                 "data": np.load(temp_dir / "data.npy", mmap_mode=mmap_mode),
                 "indices": np.load(temp_dir / "indices.npy", mmap_mode=mmap_mode),
                 "indptr": np.load(temp_dir / "indptr.npy", mmap_mode=mmap_mode),
+                "document_ids": np.load(
+                    temp_dir / "document_ids.npy", mmap_mode=mmap_mode
+                ),
             }
         else:
             csc_index = np.load(csc_index_path)
@@ -681,6 +699,7 @@ class SPLADE:
 
         self.unique_token_ids_set = set(unique_token_ids)
         self.scores = scores
+        self.document_ids = csc_index["document_ids"]
 
     @classmethod
     def load(
@@ -690,14 +709,14 @@ class SPLADE:
         csc_index_name="csc.index.npz",
         vocab_name="vocab.index.json",
         params_name="params.index.json",
-        corpus_name="corpus.npz",
+        corpus_name="corpus.jsonl",
         load_corpus=True,
         mmap=False,
         load_vocab=True,
     ):
         """
-        Load a BM25S index that was saved using the `save` method.
-        This returns a BM25S object with the saved parameters and scores,
+        Load a SPLADE index that was saved using the `save` method.
+        This returns a SPLADE object with the saved parameters and scores,
         which can be directly used for retrieval.
 
         Parameters
@@ -709,7 +728,7 @@ class SPLADE:
             A sentence-transformers SPLADE model (The same one used to create the index)
 
         csc_index_name : str
-            The name of the file that contains the csc index arrays (data, indices, indptr).
+            The name of the file that contains the csc index arrays (data, indices, indptr, document_ids).
 
         vocab_name : str
             The name of the file that contains the vocab dictionary.
@@ -772,30 +791,18 @@ class SPLADE:
             # if a corpus.npz file exists, load it
             corpus_path = save_dir / corpus_name
             if os.path.exists(corpus_path):
-                mmap_mode = "r" if mmap else None
+                # mmap_mode = "r" if mmap else None
                 if mmap:
-                    from zipfile import ZipFile
-
-                    temp_dir = save_dir / "temp"
-
-                    with ZipFile(corpus_path, "r") as f:
-                        f.extract("corpus.npy", temp_dir)
-                        f.extract("document_ids.npy", temp_dir)
-
-                    decompressed_corpus_path = temp_dir / "corpus.npy"
-                    decompressed_doc_ids_path = temp_dir / "document_ids.npy"
-
-                    corpus = np.load(decompressed_corpus_path, mmap_mode=mmap_mode)
-                    document_ids = np.load(
-                        decompressed_doc_ids_path, mmap_mode=mmap_mode
-                    )
-
+                    corpus = utils.corpus.JsonlCorpus(corpus_path)
                     splade_obj.corpus = corpus
-                    splade_obj.document_ids = document_ids
                 else:
-                    loaded_corpus = np.load(corpus_path)
-                    splade_obj.corpus = loaded_corpus["corpus"]
-                    splade_obj.document_ids = loaded_corpus["document_ids"]
+                    corpus = []
+                    with open(corpus_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            doc = json_functions.loads(line)
+                            corpus.append(doc["text"])
+
+                    splade_obj.corpus = np.asarray(corpus, dtype=object)
 
         return splade_obj
 
