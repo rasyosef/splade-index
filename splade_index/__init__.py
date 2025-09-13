@@ -233,9 +233,9 @@ class SPLADE:
             show_progress_bar=show_progress,
         ).to_sparse_csc()
 
-        data = score_matrix.values().numpy().astype(dtype=self.dtype)
-        indices = score_matrix.row_indices().numpy().astype(dtype=self.int_dtype)
-        indptr = score_matrix.ccol_indices().numpy().astype(dtype=self.int_dtype)
+        data = score_matrix.values().numpy()
+        indices = score_matrix.row_indices().numpy()
+        indptr = score_matrix.ccol_indices().numpy()
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
