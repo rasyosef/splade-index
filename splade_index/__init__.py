@@ -182,6 +182,15 @@ class SPLADE:
 
         return scores
 
+    def create_csc_index(self, model, documents, batch_size, chunk_size, show_progress):
+        return model.encode_document(
+            documents,
+            batch_size=batch_size,
+            chunk_size=chunk_size,
+            save_to_cpu=True,
+            show_progress_bar=show_progress,
+        ).to_sparse_csc()
+
     def index(
         self,
         model,
@@ -225,13 +234,13 @@ class SPLADE:
 
         """
 
-        score_matrix = model.encode_document(
-            documents,
+        score_matrix = self.create_csc_index(
+            model=model,
+            documents=documents,
             batch_size=batch_size,
             chunk_size=chunk_size,
-            save_to_cpu=True,
-            show_progress_bar=show_progress,
-        ).to_sparse_csc()
+            show_progress=show_progress,
+        )
 
         data = score_matrix.values().numpy()
         indices = score_matrix.row_indices().numpy()
