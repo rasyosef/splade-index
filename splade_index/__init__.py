@@ -233,9 +233,9 @@ class SPLADE:
             show_progress_bar=show_progress,
         ).to_sparse_csc()
 
-        data = score_matrix.values().numpy()
-        indices = score_matrix.row_indices().numpy()
-        indptr = score_matrix.ccol_indices().numpy()
+        data = score_matrix.values().numpy().astype(dtype=self.dtype, copy=False)
+        indices = score_matrix.row_indices().numpy().astype(dtype=self.int_dtype)
+        indptr = score_matrix.ccol_indices().numpy().astype(dtype=self.int_dtype)
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
@@ -651,7 +651,7 @@ class SPLADE:
         Parameters
         ----------
         csc_index_name : str
-            The name of the file that contains the csc index arrays (data, indices, indptr).
+            The name of the file that contains the csc index arrays (data, indices, indptr, document_ids).
 
         mmap : bool
             Whether to use Memory-map for the np.load function. If false, the arrays will be loaded into memory.
@@ -788,7 +788,7 @@ class SPLADE:
 
         if load_corpus:
             # load the model from the snapshot
-            # if a corpus.npz file exists, load it
+            # if a corpus.json file exists, load it
             corpus_path = save_dir / corpus_name
             if os.path.exists(corpus_path):
                 # mmap_mode = "r" if mmap else None
