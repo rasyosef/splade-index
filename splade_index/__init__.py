@@ -354,6 +354,12 @@ class SPLADE:
 
         return topk_scores, topk_indices
 
+    def change_device(self, device):
+        self.scores["data"] = self.scores["data"].to(device, dtype=torch.float32)
+        self.scores["indices"] = self.scores["indices"].to(device, dtype=torch.int32)
+        self.scores["indptr"] = self.scores["indptr"].to(device, dtype=torch.int32)
+        self.device = device
+
     def retrieve(
         self,
         queries: List[str],
@@ -545,7 +551,7 @@ class SPLADE:
                 out = list(tqdm(process_map, **tqdm_kwargs))
 
         scores, indices = zip(*out)
-        scores, indices = np.array(scores), np.array(indices)
+        scores, indices = np.asarray(scores), np.asarray(indices)
 
         retrieved_indices = indices
 
