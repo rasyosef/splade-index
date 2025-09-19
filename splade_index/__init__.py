@@ -10,6 +10,7 @@ import json
 from typing import List, NamedTuple, Literal, Union
 
 import numpy as np
+import torch
 
 from .utils import json_functions as json_functions
 
@@ -119,6 +120,7 @@ class SPLADE:
         self.document_ids = None
         self.model = None
         self._original_version = __version__
+        self.device = None
 
         if backend == "auto":
             self.backend = "numba" if selection_jit is not None else "numpy"
@@ -134,6 +136,7 @@ class SPLADE:
         query_token_ids: np.ndarray,
         query_token_weights: np.ndarray,
         dtype: np.dtype,
+        device="cpu",
     ) -> np.ndarray:
         """
         This internal static function calculates the relevance scores for a given query,
@@ -169,11 +172,11 @@ class SPLADE:
         indptr_starts = indptr[query_token_ids]
         indptr_ends = indptr[query_token_ids + 1]
 
-        scores = np.zeros(num_docs, dtype=dtype)
+        scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
         for i in range(len(query_token_ids)):
             start, end = indptr_starts[i], indptr_ends[i]
-            np.add.at(
-                scores, indices[start:end], data[start:end] * query_token_weights[i]
+            scores.index_add_(
+                0, indices[start:end], data[start:end] * query_token_weights[i]
             )
 
             # # The following code is slower with numpy, but faster after JIT compilation
@@ -192,6 +195,7 @@ class SPLADE:
         show_progress=True,
         leave_progress=False,
         compile_numba_code=True,
+        device: Literal["cpu", "cuda"] = "cpu",
     ):
         """
         Given a `corpus` of documents, create the SPLADE index.
@@ -233,9 +237,9 @@ class SPLADE:
             show_progress_bar=show_progress,
         ).to_sparse_csc()
 
-        data = score_matrix.values().numpy().astype(dtype=self.dtype, copy=False)
-        indices = score_matrix.row_indices().numpy().astype(dtype=self.int_dtype)
-        indptr = score_matrix.ccol_indices().numpy().astype(dtype=self.int_dtype)
+        data = score_matrix.values().to(device)
+        indices = score_matrix.row_indices().to(device)
+        indptr = score_matrix.ccol_indices().to(device)
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
@@ -250,6 +254,7 @@ class SPLADE:
         self.scores = scores
         self.vocab_dict = vocab_dict
         self.model = model
+        self.device = device
         self.corpus = np.asarray(documents, dtype=object)
         if document_ids is not None:
             self.document_ids = np.asarray(document_ids)
@@ -274,7 +279,10 @@ class SPLADE:
             )
 
     def get_scores(
-        self, query_token_ids_single: List[int], query_token_weights_single: List[float]
+        self,
+        query_token_ids_single: List[int],
+        query_token_weights_single: List[float],
+        device: str,
     ) -> np.ndarray:
 
         data = self.scores["data"]
@@ -302,6 +310,7 @@ class SPLADE:
             query_token_ids=query_token_ids,
             query_token_weights=query_token_weights,
             dtype=dtype,
+            device=device,
         )
 
         return scores
@@ -313,6 +322,7 @@ class SPLADE:
         k: int = 1000,
         backend="auto",
         sorted: bool = False,
+        device: str = "cpu",
     ):
         """
         This function is used to retrieve the top-k results for a single query.
@@ -326,7 +336,7 @@ class SPLADE:
             scores_q = np.zeros(self.scores["num_docs"], dtype=self.dtype)
         else:
             scores_q = self.get_scores(
-                query_token_ids_single, query_token_weights_single
+                query_token_ids_single, query_token_weights_single, device=device
             )
 
         if backend.startswith("numba"):
@@ -514,6 +524,7 @@ class SPLADE:
             k=k,
             sorted=sorted,
             backend=backend_selection,
+            device=self.device,
         )
 
         if n_threads == 0:

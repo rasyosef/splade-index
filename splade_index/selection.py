@@ -38,9 +38,9 @@ def _topk_numpy(query_scores, k, sorted):
 
 
 def _topk_torch(query_scores, k):
-    topk_scores, topk_indices = torch.topk(torch.from_numpy(query_scores), k)
-    topk_scores = topk_scores.numpy()
-    topk_indices = topk_indices.numpy()
+    topk_scores, topk_indices = torch.topk(query_scores, k)
+    topk_scores = topk_scores.cpu().numpy()
+    topk_indices = topk_indices.cpu().numpy()
 
     return topk_scores, topk_indices
 
