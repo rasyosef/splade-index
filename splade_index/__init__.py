@@ -29,6 +29,8 @@ import tempfile
 
 from .hf import README_TEMPLATE, can_save_locally
 
+from time import time
+
 
 def _faketqdm(iterable, *args, **kwargs):
     return iterable
@@ -121,6 +123,7 @@ class SPLADE:
         self.model = None
         self._original_version = __version__
         self.device = None
+        self.times = []
 
         if backend == "auto":
             self.backend = "numba" if selection_jit is not None else "numpy"
@@ -285,6 +288,8 @@ class SPLADE:
         device: str,
     ) -> np.ndarray:
 
+        self.times.append(("get_scores_begin", time()))
+
         data = self.scores["data"]
         indices = self.scores["indices"]
         indptr = self.scores["indptr"]
@@ -313,6 +318,8 @@ class SPLADE:
             device=device,
         )
 
+        self.times.append(("get_scores_end", time()))
+
         return scores
 
     def _get_top_k_results(
@@ -329,6 +336,9 @@ class SPLADE:
         Since it's a hidden function, the user should not call it directly and
         may change in the future. Please use the `retrieve` function instead.
         """
+
+        self.times.append(("_get_top_k_results_begin", time()))
+
         if len(query_token_ids_single) == 0:
             logger.info(
                 msg="The query is empty. This will result in a zero score for all documents."
@@ -348,10 +358,13 @@ class SPLADE:
                 scores_q, k=k, sorted=sorted, backend=backend
             )
         else:
+            self.times.append(("topk_start", time()))
             topk_scores, topk_indices = selection.topk(
                 scores_q, k=k, sorted=sorted, backend=backend
             )
+            self.times.append(("topk_end", time()))
 
+        self.times.append(("_get_top_k_results_end", time()))
         return topk_scores, topk_indices
 
     def change_device(self, device):
@@ -434,6 +447,9 @@ class SPLADE:
         ImportError
             If the numba backend is selected but numba is not installed.
         """
+
+        self.times.append(("retrieve_begin", time()))
+
         num_docs = self.scores["num_docs"]
         if k > num_docs:
             raise ValueError(
@@ -481,6 +497,8 @@ class SPLADE:
         query_token_weights = [
             query_emb.coalesce().values().numpy() for query_emb in query_embeddings
         ]
+
+        self.times.append(("retrieve_encoded", time()))
 
         if backend_selection == "numba":
             if _retrieve_numba_functional is None:
@@ -551,9 +569,12 @@ class SPLADE:
                 out = list(tqdm(process_map, **tqdm_kwargs))
 
         scores, indices = zip(*out)
+        self.times.append(("threadpool_end", time()))
         scores, indices = np.asarray(scores), np.asarray(indices)
 
         retrieved_indices = indices
+
+        self.times.append(("retrieve_end", time()))
 
         if return_as == "tuple":
             return Results(
