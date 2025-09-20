@@ -11,6 +11,8 @@ python -m unittest discover -s tests/core
 
 ### Numba backend 
 
+To test the numba backend, you have to run:
+
 ```bash
 python -m unittest discover -s tests/numba
 ```
