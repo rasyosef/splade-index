@@ -186,7 +186,7 @@ class SPLADE:
                 0, indices[start:end], data[start:end], alpha=query_token_weights[i]
             )
             self.times.append(
-                (f"{device}_compute_relevance_from_scores_start_{i}", time())
+                (f"{device}_compute_relevance_from_scores_end_{i}", time())
             )
 
             # # The following code is slower with numpy, but faster after JIT compilation
