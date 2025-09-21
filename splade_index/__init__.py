@@ -307,6 +307,7 @@ class SPLADE:
         query_token_ids = query_token_ids_single[query_tokens_ids_filtered_idx]
         query_token_weights = query_token_weights_single[query_tokens_ids_filtered_idx]
 
+        self.times.append(("_compute_relevance_from_scores_start", time()))
         scores = self._compute_relevance_from_scores(
             data=data,
             indptr=indptr,
