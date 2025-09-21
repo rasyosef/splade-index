@@ -1,0 +1,50 @@
+name: Unit tests
+
+on:
+  push:
+    branches: 
+      - main 
+      - develop
+  
+  pull_request:
+    branches: 
+      - main
+      - develop
+
+jobs:
+  test-core:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Try to load cached dependencies
+        uses: actions/cache@v4
+        with: 
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('setup.py') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+
+      - name: Run core tests
+        run: |
+          python -m unittest discover -s tests/core
+
+      - name: Install Numba
+        run: |
+          pip install numba>=0.61.0
+
+      - name: Run numba backend tests
+        run: |
+          python -m unittest discover -s tests/numba
+          
+        
