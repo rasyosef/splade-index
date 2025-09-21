@@ -130,8 +130,8 @@ class SPLADE:
         else:
             self.backend = backend
 
-    @staticmethod
     def _compute_relevance_from_scores(
+        self,
         data: np.ndarray,
         indptr: np.ndarray,
         indices: np.ndarray,
@@ -171,21 +171,28 @@ class SPLADE:
         This function was optimized by the baguetter library. The original implementation can be found at:
         https://github.com/mixedbread-ai/baguetter/blob/main/baguetter/indices/sparse/models/bm25/index.py
         """
+        self.times.append(("_compute_relevance_from_scores_start", time()))
 
         indptr_starts = indptr[query_token_ids]
         indptr_ends = indptr[query_token_ids + 1]
 
         scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
         for i in range(len(query_token_ids)):
+            self.times.append(
+                (f"{device}_compute_relevance_from_scores_start_{i}", time())
+            )
             start, end = indptr_starts[i], indptr_ends[i]
             scores.index_add_(
                 0, indices[start:end], data[start:end], alpha=query_token_weights[i]
+            )
+            self.times.append(
+                (f"{device}_compute_relevance_from_scores_start_{i}", time())
             )
 
             # # The following code is slower with numpy, but faster after JIT compilation
             # for j in range(start, end):
             #     scores[indices[j]] += data[j]
-
+        self.times.append(("_compute_relevance_from_scores_end", time()))
         return scores
 
     def index(
@@ -307,7 +314,6 @@ class SPLADE:
         query_token_ids = query_token_ids_single[query_tokens_ids_filtered_idx]
         query_token_weights = query_token_weights_single[query_tokens_ids_filtered_idx]
 
-        self.times.append(("_compute_relevance_from_scores_start", time()))
         scores = self._compute_relevance_from_scores(
             data=data,
             indptr=indptr,
