@@ -176,7 +176,9 @@ class SPLADE:
         indptr_starts = indptr[query_token_ids]
         indptr_ends = indptr[query_token_ids + 1]
 
+        self.times.append(("create_scores_tensor_start", time()))
         scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
+        self.times.append(("create_scores_tensor_end", time()))
         for i in range(len(query_token_ids)):
             self.times.append(
                 (f"{device}_compute_relevance_from_scores_start_{i}", time())
