@@ -176,19 +176,14 @@ class SPLADE:
         indptr_starts = indptr[query_token_ids]
         indptr_ends = indptr[query_token_ids + 1]
 
-        self.times.append(("create_scores_tensor_start", time()))
+        self.times.append((f"{device}_create_scores_tensor_start", time()))
         scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
-        self.times.append(("create_scores_tensor_end", time()))
+        self.times.append((f"{device}_create_scores_tensor_end", time()))
         for i in range(len(query_token_ids)):
-            self.times.append(
-                (f"{device}_compute_relevance_from_scores_start_{i}", time())
-            )
+
             start, end = indptr_starts[i], indptr_ends[i]
             scores.index_add_(
                 0, indices[start:end], data[start:end], alpha=query_token_weights[i]
-            )
-            self.times.append(
-                (f"{device}_compute_relevance_from_scores_end_{i}", time())
             )
 
             # # The following code is slower with numpy, but faster after JIT compilation
@@ -251,7 +246,7 @@ class SPLADE:
 
         data = score_matrix.values().to(device)
         indices = score_matrix.row_indices().to(device)
-        indptr = score_matrix.ccol_indices()  # .to(device)
+        indptr = score_matrix.ccol_indices().to(device)
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
@@ -379,7 +374,7 @@ class SPLADE:
     def change_device(self, device):
         self.scores["data"] = self.scores["data"].to(device, dtype=torch.float32)
         self.scores["indices"] = self.scores["indices"].to(device, dtype=torch.int32)
-        self.scores["indptr"] = self.scores["indptr"].to("cpu", dtype=torch.int32)
+        self.scores["indptr"] = self.scores["indptr"].to(device, dtype=torch.int32)
         self.device = device
 
     def retrieve(
