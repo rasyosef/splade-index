@@ -246,7 +246,7 @@ class SPLADE:
 
         data = score_matrix.values().to(device)
         indices = score_matrix.row_indices().to(device)
-        indptr = score_matrix.ccol_indices().to(device)
+        indptr = score_matrix.ccol_indices()  # .to(device)
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
@@ -374,7 +374,7 @@ class SPLADE:
     def change_device(self, device):
         self.scores["data"] = self.scores["data"].to(device, dtype=torch.float32)
         self.scores["indices"] = self.scores["indices"].to(device, dtype=torch.int32)
-        self.scores["indptr"] = self.scores["indptr"].to(device, dtype=torch.int32)
+        self.scores["indptr"] = self.scores["indptr"].to("cpu", dtype=torch.int32)
         self.device = device
 
     def retrieve(
