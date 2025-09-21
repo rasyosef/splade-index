@@ -144,9 +144,9 @@ def _retrieve_numba_functional(
         sorted=sorted,
         dtype=np.dtype(dtype),
         int_dtype=np.dtype(int_dtype),
-        data=scores["data"],
-        indptr=scores["indptr"],
-        indices=scores["indices"],
+        data=scores["data"].numpy(),
+        indptr=scores["indptr"].numpy(),
+        indices=scores["indices"].numpy(),
         num_docs=scores["num_docs"],
     )
 
