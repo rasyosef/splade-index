@@ -179,7 +179,7 @@ class SPLADE:
         for i in range(len(query_token_ids)):
             start, end = indptr_starts[i], indptr_ends[i]
             scores.index_add_(
-                0, indices[start:end], data[start:end] * query_token_weights[i]
+                0, indices[start:end], data[start:end], alpha=query_token_weights[i]
             )
 
             # # The following code is slower with numpy, but faster after JIT compilation
