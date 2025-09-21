@@ -724,9 +724,9 @@ class SPLADE:
             csc_index = np.load(csc_index_path)
 
         scores = {}
-        scores["data"] = csc_index["data"]
-        scores["indices"] = csc_index["indices"]
-        scores["indptr"] = csc_index["indptr"]
+        scores["data"] = torch.from_numpy(csc_index["data"])
+        scores["indices"] = torch.from_numpy(csc_index["indices"])
+        scores["indptr"] = torch.from_numpy(csc_index["indptr"])
         scores["num_docs"] = num_docs
 
         unique_token_ids = [
