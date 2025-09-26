@@ -10,18 +10,10 @@ import json
 from typing import List, NamedTuple, Literal, Union
 
 import numpy as np
+import torch
 
 from . import utils
-
-try:
-    from .numba import selection as selection_jit
-except ImportError:
-    selection_jit = None
-
-try:
-    from .numba.retrieve_utils import _retrieve_numba_functional
-except ImportError:
-    _retrieve_numba_functional = None
+from .version import __version__
 
 import shutil
 import tempfile
@@ -41,10 +33,6 @@ else:
         from tqdm.auto import tqdm
     except ImportError:
         tqdm = _faketqdm
-
-
-from . import selection
-from .version import __version__
 
 logger = logging.getLogger("splade_index")
 logger.setLevel(logging.DEBUG)
@@ -89,12 +77,21 @@ def is_list_of_type(obj, type_=str):
     return True
 
 
-class SPLADE:
+def topk_torch(query_scores, k):
+    topk_scores, topk_indices = torch.topk(query_scores, k)
+    topk_scores = topk_scores.numpy()
+    topk_indices = topk_indices.numpy()
+
+    return topk_scores, topk_indices
+
+
+class SPLADE_GPU:
     def __init__(
         self,
         dtype="float32",
         int_dtype="int32",
-        backend: Literal["auto", "numpy", "numba"] = "numpy",
+        backend: Literal["auto", "numpy"] = "numpy",
+        device="cuda",
     ):
         """
         SPLADE initialization.
@@ -119,14 +116,11 @@ class SPLADE:
         self.document_ids = None
         self.model = None
         self._original_version = __version__
+        self.device = device
+        self.backend = backend
 
-        if backend == "auto":
-            self.backend = "numba" if selection_jit is not None else "numpy"
-        else:
-            self.backend = backend
-
-    @staticmethod
     def _compute_relevance_from_scores(
+        self,
         data: np.ndarray,
         indptr: np.ndarray,
         indices: np.ndarray,
@@ -134,6 +128,7 @@ class SPLADE:
         query_token_ids: np.ndarray,
         query_token_weights: np.ndarray,
         dtype: np.dtype,
+        device="cuda",
     ) -> np.ndarray:
         """
         This internal static function calculates the relevance scores for a given query,
@@ -141,13 +136,13 @@ class SPLADE:
         Parameters
         ----------
         data (np.ndarray)
-            Data array of the SPLADE index.
+            Data array of the BM25 index.
         indptr (np.ndarray)
-            Index pointer array of the SPLADE index.
+            Index pointer array of the BM25 index.
         indices (np.ndarray)
-            Indices array of the SPLADE index.
+            Indices array of the BM25 index.
         num_docs (int)
-            Number of documents in the SPLADE index.
+            Number of documents in the BM25 index.
         query_token_ids (np.ndarray)
             Array of token IDs to score.
         query_token_weights (np.ndarray)
@@ -169,17 +164,17 @@ class SPLADE:
         indptr_starts = indptr[query_token_ids]
         indptr_ends = indptr[query_token_ids + 1]
 
-        scores = np.zeros(num_docs, dtype=dtype)
+        scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
         for i in range(len(query_token_ids)):
+
             start, end = indptr_starts[i], indptr_ends[i]
-            np.add.at(
-                scores, indices[start:end], data[start:end] * query_token_weights[i]
+            scores.index_add_(
+                0, indices[start:end], data[start:end], alpha=query_token_weights[i]
             )
 
             # # The following code is slower with numpy, but faster after JIT compilation
             # for j in range(start, end):
             #     scores[indices[j]] += data[j]
-
         return scores
 
     def index(
@@ -191,7 +186,7 @@ class SPLADE:
         chunk_size: int = 128,
         show_progress=True,
         leave_progress=False,
-        compile_numba_code=True,
+        init_jit_compile=True,
     ):
         """
         Given a `corpus` of documents, create the SPLADE index.
@@ -233,9 +228,9 @@ class SPLADE:
             show_progress_bar=show_progress,
         ).to_sparse_csc()
 
-        data = score_matrix.values().numpy().astype(dtype=self.dtype, copy=False)
-        indices = score_matrix.row_indices().numpy().astype(dtype=self.int_dtype)
-        indptr = score_matrix.ccol_indices().numpy().astype(dtype=self.int_dtype)
+        data = score_matrix.values().to(self.device)
+        indices = score_matrix.row_indices().to(self.device)
+        indptr = score_matrix.ccol_indices()
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
@@ -263,7 +258,7 @@ class SPLADE:
 
         self.unique_token_ids_set = set(unique_token_ids)
 
-        if self.backend == "numba" and compile_numba_code:
+        if init_jit_compile:
             # to initiate jit-compilation
             _ = self.retrieve(
                 ["dummy query"],
@@ -274,7 +269,10 @@ class SPLADE:
             )
 
     def get_scores(
-        self, query_token_ids_single: List[int], query_token_weights_single: List[float]
+        self,
+        query_token_ids_single: List[int],
+        query_token_weights_single: List[float],
+        device: str,
     ) -> np.ndarray:
 
         data = self.scores["data"]
@@ -302,6 +300,7 @@ class SPLADE:
             query_token_ids=query_token_ids,
             query_token_weights=query_token_weights,
             dtype=dtype,
+            device=device,
         )
 
         return scores
@@ -313,12 +312,14 @@ class SPLADE:
         k: int = 1000,
         backend="auto",
         sorted: bool = False,
+        device: str = "cuda",
     ):
         """
         This function is used to retrieve the top-k results for a single query.
         Since it's a hidden function, the user should not call it directly and
         may change in the future. Please use the `retrieve` function instead.
         """
+
         if len(query_token_ids_single) == 0:
             logger.info(
                 msg="The query is empty. This will result in a zero score for all documents."
@@ -326,21 +327,10 @@ class SPLADE:
             scores_q = np.zeros(self.scores["num_docs"], dtype=self.dtype)
         else:
             scores_q = self.get_scores(
-                query_token_ids_single, query_token_weights_single
+                query_token_ids_single, query_token_weights_single, device=device
             )
 
-        if backend.startswith("numba"):
-            if selection_jit is None:
-                raise ImportError(
-                    "Numba is not installed. Please install numba to use the numba backend."
-                )
-            topk_scores, topk_indices = selection_jit.topk(
-                scores_q, k=k, sorted=sorted, backend=backend
-            )
-        else:
-            topk_scores, topk_indices = selection.topk(
-                scores_q, k=k, sorted=sorted, backend=backend
-            )
+        topk_scores, topk_indices = topk_torch(scores_q, k=k)
 
         return topk_scores, topk_indices
 
@@ -355,7 +345,7 @@ class SPLADE:
         leave_progress: bool = False,
         n_threads: int = 0,
         chunksize: int = 50,
-        backend_selection: Literal["auto", "numpy", "pytorch", "numba"] = "auto",
+        backend_selection: Literal["auto", "numpy", "pytorch"] = "auto",
     ):
         """
         Retrieve the top-k documents for each query (tokenized).
@@ -418,6 +408,7 @@ class SPLADE:
         ImportError
             If the numba backend is selected but numba is not installed.
         """
+
         num_docs = self.scores["num_docs"]
         if k > num_docs:
             raise ValueError(
@@ -437,19 +428,6 @@ class SPLADE:
         if n_threads == -1:
             n_threads = os.cpu_count()
 
-        if self.backend == "numba" and backend_selection not in ("numba", "auto"):
-            warning_msg = (
-                "backend is set to `numba`, but backend_selection is neither `numba` or `auto`. "
-                "In order to retrieve using the numba backend, please change the backend_selection parameter to `numba`."
-            )
-            warnings.warn(warning_msg, UserWarning)
-
-        backend_selection = (
-            "numba"
-            if backend_selection == "auto" and self.backend == "numba"
-            else backend_selection
-        )
-
         # Embed Queries
         query_embeddings = self.model.encode_query(
             queries,
@@ -466,54 +444,19 @@ class SPLADE:
             query_emb.coalesce().values().numpy() for query_emb in query_embeddings
         ]
 
-        if backend_selection == "numba":
-            if _retrieve_numba_functional is None:
-                raise ImportError(
-                    "Numba is not installed. Please install numba wiith `pip install numba` to use the numba backend."
-                )
-
-            res = _retrieve_numba_functional(
-                query_tokens_ids=query_token_ids,
-                query_tokens_weights=query_token_weights,
-                scores=self.scores,
-                k=k,
-                sorted=sorted,
-                return_as=return_as,
-                show_progress=show_progress,
-                leave_progress=leave_progress,
-                n_threads=n_threads,
-                chunksize=None,  # chunksize is ignored in the numba backend
-                backend_selection=backend_selection,  # backend_selection is ignored in the numba backend
-                dtype=self.dtype,
-                int_dtype=self.int_dtype,
-            )
-
-            if return_as == "tuple":
-                return Results(
-                    doc_ids=self.document_ids[res[0]],
-                    documents=self.corpus[res[0]],
-                    scores=res[1],
-                )
-            elif return_as == "documents":
-                return self.corpus[res]
-            elif return_as == "doc_ids":
-                return self.document_ids[res]
-            else:
-                raise ValueError(
-                    "`return_as` must be either 'tuple', 'doc_ids' or 'documents'"
-                )
-
         tqdm_kwargs = {
             "total": len(query_token_ids),
             "desc": "SPLADE Index Retrieve",
             "leave": leave_progress,
             "disable": not show_progress,
         }
+
         topk_fn = partial(
             self._get_top_k_results,
             k=k,
             sorted=sorted,
             backend=backend_selection,
+            device=self.device,
         )
 
         if n_threads == 0:
@@ -534,7 +477,7 @@ class SPLADE:
                 out = list(tqdm(process_map, **tqdm_kwargs))
 
         scores, indices = zip(*out)
-        scores, indices = np.array(scores), np.array(indices)
+        scores, indices = np.asarray(scores), np.asarray(indices)
 
         retrieved_indices = indices
 
@@ -591,9 +534,9 @@ class SPLADE:
 
         np.savez_compressed(
             csc_index_path,
-            data=self.scores["data"],
-            indices=self.scores["indices"],
-            indptr=self.scores["indptr"],
+            data=self.scores["data"].cpu().numpy(),
+            indices=self.scores["indices"].cpu().numpy(),
+            indptr=self.scores["indptr"].cpu().numpy(),
             document_ids=self.document_ids,
         )
 
@@ -686,9 +629,9 @@ class SPLADE:
             csc_index = np.load(csc_index_path)
 
         scores = {}
-        scores["data"] = csc_index["data"]
-        scores["indices"] = csc_index["indices"]
-        scores["indptr"] = csc_index["indptr"]
+        scores["data"] = torch.from_numpy(csc_index["data"]).to(self.device)
+        scores["indices"] = torch.from_numpy(csc_index["indices"]).to(self.device)
+        scores["indptr"] = torch.from_numpy(csc_index["indptr"])
         scores["num_docs"] = num_docs
 
         unique_token_ids = [
@@ -713,6 +656,7 @@ class SPLADE:
         load_corpus=True,
         mmap=False,
         load_vocab=True,
+        device="cuda",
     ):
         """
         Load a SPLADE index that was saved using the `save` method.
@@ -722,7 +666,7 @@ class SPLADE:
         Parameters
         ----------
         save_dir : str
-            The directory where the SPLADE index was saved.
+            The directory where the BM25S index was saved.
 
         model: SparseEncoder
             A sentence-transformers SPLADE model (The same one used to create the index)
@@ -778,6 +722,8 @@ class SPLADE:
         splade_obj._original_version = original_version
 
         splade_obj.model = model
+
+        splade_obj.device = device
 
         splade_obj.load_scores(
             save_dir=save_dir,
@@ -922,9 +868,10 @@ class SPLADE:
         local_dir=None,
         load_corpus=True,
         mmap=False,
+        device="cuda",
     ):
         """
-        This function loads the SPLADE model from the Hugging Face Hub.
+        This function loads the BM25 model from the Hugging Face Hub.
 
         Parameters
         ----------
@@ -976,4 +923,5 @@ class SPLADE:
             model=model,
             load_corpus=load_corpus,
             mmap=mmap,
+            device=device,
         )
