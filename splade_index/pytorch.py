@@ -79,8 +79,8 @@ def is_list_of_type(obj, type_=str):
 
 def topk_torch(query_scores, k):
     topk_scores, topk_indices = torch.topk(query_scores, k)
-    topk_scores = topk_scores.numpy()
-    topk_indices = topk_indices.numpy()
+    topk_scores = topk_scores.cpu().numpy()
+    topk_indices = topk_indices.cpu().numpy()
 
     return topk_scores, topk_indices
 
@@ -228,9 +228,9 @@ class SPLADE_GPU:
             show_progress_bar=show_progress,
         ).to_sparse_csc()
 
-        data = score_matrix.values().to(self.device)
-        indices = score_matrix.row_indices().to(self.device)
-        indptr = score_matrix.ccol_indices()
+        data = score_matrix.values().to(self.device, dtype=torch.float32)
+        indices = score_matrix.row_indices().to(self.device, dtype=torch.int32)
+        indptr = score_matrix.ccol_indices().to(dtype=torch.int32)
 
         vocab_dict = model.tokenizer.get_vocab()
         num_docs = len(documents)
@@ -603,30 +603,9 @@ class SPLADE_GPU:
         """
         save_dir = Path(save_dir)
         csc_index_path = save_dir / csc_index_name
-        mmap_mode = "r" if mmap else None
         csc_index = None
 
-        if mmap:
-            from zipfile import ZipFile
-
-            temp_dir = save_dir / "temp"
-
-            with ZipFile(csc_index_path, "r") as f:
-                f.extract("data.npy", temp_dir)
-                f.extract("indices.npy", temp_dir)
-                f.extract("indptr.npy", temp_dir)
-                f.extract("document_ids.npy", temp_dir)
-
-            csc_index = {
-                "data": np.load(temp_dir / "data.npy", mmap_mode=mmap_mode),
-                "indices": np.load(temp_dir / "indices.npy", mmap_mode=mmap_mode),
-                "indptr": np.load(temp_dir / "indptr.npy", mmap_mode=mmap_mode),
-                "document_ids": np.load(
-                    temp_dir / "document_ids.npy", mmap_mode=mmap_mode
-                ),
-            }
-        else:
-            csc_index = np.load(csc_index_path)
+        csc_index = np.load(csc_index_path)
 
         scores = {}
         scores["data"] = torch.from_numpy(csc_index["data"]).to(self.device)
