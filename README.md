@@ -5,6 +5,14 @@ SPLADE-Index is an ultrafast search index for SPLADE sparse retrieval models imp
 </i>
 <br/><br/>
 
+You can use `splade-index` to 
+- Index and Query up to millions of documents using any SPLADE Sparse Embedding (SparseEncoder) model supported by `sentence-transformers` such as `naver/spalde-v3`.
+- Save your index locally and load your index from the save files.
+- Upload your index to huggingface hub and let anyone else download and use it.
+- Make use of NVIDIA GPUs and PyTorch for 10x faster search compared to `splade-index`'s CPU based `numba` backend, when your index contains 1 million plus documents.
+
+## SPLADE
+
 SPLADE is a neural retrieval model which learns query/document sparse expansion. Sparse representations benefit from several advantages compared to dense approaches: efficient use of inverted index, explicit lexical match, interpretability... They also seem to be better at generalizing on out-of-domain data (BEIR benchmark).
 
 For more information about SPLADE models, please refer to the following. 

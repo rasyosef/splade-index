@@ -91,7 +91,7 @@ class SPLADE_GPU:
         dtype="float32",
         int_dtype="int32",
         backend: Literal["auto", "numpy"] = "numpy",
-        device: Literal["cuda", "mps", "cpu"] = "cuda",
+        device: Literal["cuda", "cpu"] = "cuda",
     ):
         """
         SPLADE initialization.
@@ -112,9 +112,7 @@ class SPLADE_GPU:
 
         device : str
             the accelerator device where the index torch tensors are to be moved for faster computation.
-            Set `device` to "cuda" to make use of your NVIDIA GPUs or "mps" to use your Apple Silicon GPUs.
             "cuda"- For computations on NVIDIA GPUs using CUDA.
-            "mps": For computations on Apple's Metal Performance Shaders (MPS) framework.
             "cpu" - For computations on the Central Processing Unit.
         """
         self.dtype = dtype
@@ -130,13 +128,6 @@ class SPLADE_GPU:
             else:
                 raise ValueError(
                     f"`device` is set to 'cuda' but CUDA is not available with your current pytorch installation. Please install PyTorch with CUDA or choose a different `device`."
-                )
-        elif device == "mps":
-            if torch.backends.mps.is_available():
-                self.device = device
-            else:
-                raise ValueError(
-                    f"`device` is set to 'mps' but MPS is not available with your current pytorch installation. Please install PyTorch with MPS or choose a different `device`."
                 )
         else:
             self.device = device
@@ -241,7 +232,7 @@ class SPLADE_GPU:
         query_token_ids: np.ndarray,
         query_token_weights: np.ndarray,
         dtype: np.dtype,
-        device="cuda",
+        device: Literal["cuda", "cpu"] = "cuda",
     ) -> np.ndarray:
         """
         This internal static function calculates the relevance scores for a given query,
@@ -294,7 +285,7 @@ class SPLADE_GPU:
         self,
         query_token_ids_single: List[int],
         query_token_weights_single: List[float],
-        device: str,
+        device: Literal["cuda", "cpu"] = "cuda",
     ) -> np.ndarray:
 
         data = self.scores["data"]
@@ -334,7 +325,7 @@ class SPLADE_GPU:
         k: int = 1000,
         backend="auto",
         sorted: bool = False,
-        device: str = "cuda",
+        device: Literal["cuda", "cpu"] = "cuda",
     ):
         """
         This function is used to retrieve the top-k results for a single query.
@@ -660,7 +651,7 @@ class SPLADE_GPU:
         load_corpus=True,
         mmap=False,
         load_vocab=True,
-        device: Literal["cuda", "mps", "cpu"] = "cuda",
+        device: Literal["cuda", "cpu"] = "cuda",
     ):
         """
         Load a SPLADE index that was saved using the `save` method.
@@ -701,9 +692,7 @@ class SPLADE_GPU:
 
         device : str
             the accelerator device where the index torch tensors are to be moved for faster computation.
-            Set `device` to "cuda" to make use of your NVIDIA GPUs or "mps" to use your Apple Silicon GPUs.
             "cuda"- For computations on NVIDIA GPUs using CUDA.
-            "mps": For computations on Apple's Metal Performance Shaders (MPS) framework.
             "cpu" - For computations on the Central Processing Unit.
         """
         if not isinstance(mmap, bool):
@@ -879,7 +868,7 @@ class SPLADE_GPU:
         local_dir=None,
         load_corpus=True,
         mmap=False,
-        device: Literal["cuda", "mps", "cpu"] = "cuda",
+        device: Literal["cuda", "cpu"] = "cuda",
     ):
         """
         This function loads the SPLADE index from the Hugging Face Hub.
@@ -911,9 +900,7 @@ class SPLADE_GPU:
 
         device : str
             the accelerator device where the index torch tensors are to be moved for faster computation.
-            Set `device` to "cuda" to make use of your NVIDIA GPUs or "mps" to use your Apple Silicon GPUs.
             "cuda"- For computations on NVIDIA GPUs using CUDA.
-            "mps": For computations on Apple's Metal Performance Shaders (MPS) framework.
             "cpu" - For computations on the Central Processing Unit.
         """
 
