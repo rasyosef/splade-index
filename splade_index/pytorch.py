@@ -91,7 +91,7 @@ class SPLADE_GPU:
         dtype="float32",
         int_dtype="int32",
         backend: Literal["auto", "numpy"] = "numpy",
-        device="cuda",
+        device: Literal["cuda", "mps", "cpu"] = "cuda",
     ):
         """
         SPLADE initialization.
@@ -109,6 +109,13 @@ class SPLADE_GPU:
             to use the numba backend, which requires the numba library. If you select `backend="auto"`,
             the function will use the numba backend if it is available, otherwise it will use the numpy
             backend.
+
+        device : str
+            the accelerator device where the index torch tensors are to be moved for faster computation.
+            Set `device` to "cuda" to make use of your NVIDIA GPUs or "mps" to use your Apple Silicon GPUs.
+            "cuda"- For computations on NVIDIA GPUs using CUDA.
+            "mps": For computations on Apple's Metal Performance Shaders (MPS) framework.
+            "cpu" - For computations on the Central Processing Unit.
         """
         self.dtype = dtype
         self.int_dtype = int_dtype
@@ -116,66 +123,23 @@ class SPLADE_GPU:
         self.document_ids = None
         self.model = None
         self._original_version = __version__
-        self.device = device
         self.backend = backend
-
-    def _compute_relevance_from_scores(
-        self,
-        data: np.ndarray,
-        indptr: np.ndarray,
-        indices: np.ndarray,
-        num_docs: int,
-        query_token_ids: np.ndarray,
-        query_token_weights: np.ndarray,
-        dtype: np.dtype,
-        device="cuda",
-    ) -> np.ndarray:
-        """
-        This internal static function calculates the relevance scores for a given query,
-
-        Parameters
-        ----------
-        data (np.ndarray)
-            Data array of the BM25 index.
-        indptr (np.ndarray)
-            Index pointer array of the BM25 index.
-        indices (np.ndarray)
-            Indices array of the BM25 index.
-        num_docs (int)
-            Number of documents in the BM25 index.
-        query_token_ids (np.ndarray)
-            Array of token IDs to score.
-        query_token_weights (np.ndarray)
-            Array of token weights.
-        dtype (np.dtype)
-            Data type for score calculation.
-
-        Returns
-        -------
-        np.ndarray
-            Array of SPLADE relevance scores for a given query.
-
-        Note
-        ----
-        This function was optimized by the baguetter library. The original implementation can be found at:
-        https://github.com/mixedbread-ai/baguetter/blob/main/baguetter/indices/sparse/models/bm25/index.py
-        """
-
-        indptr_starts = indptr[query_token_ids]
-        indptr_ends = indptr[query_token_ids + 1]
-
-        scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
-        for i in range(len(query_token_ids)):
-
-            start, end = indptr_starts[i], indptr_ends[i]
-            scores.index_add_(
-                0, indices[start:end], data[start:end], alpha=query_token_weights[i]
-            )
-
-            # # The following code is slower with numpy, but faster after JIT compilation
-            # for j in range(start, end):
-            #     scores[indices[j]] += data[j]
-        return scores
+        if device == "cuda":
+            if torch.cuda.is_available():
+                self.device = device
+            else:
+                raise ValueError(
+                    f"`device` is set to 'cuda' but CUDA is not available with your current pytorch installation. Please install PyTorch with CUDA or choose a different `device`."
+                )
+        elif device == "mps":
+            if torch.backends.mps.is_available():
+                self.device = device
+            else:
+                raise ValueError(
+                    f"`device` is set to 'mps' but MPS is not available with your current pytorch installation. Please install PyTorch with MPS or choose a different `device`."
+                )
+        else:
+            self.device = device
 
     def index(
         self,
@@ -267,6 +231,64 @@ class SPLADE_GPU:
                 return_as="doc_ids",
                 show_progress=False,
             )
+
+    @staticmethod
+    def _compute_relevance_from_scores(
+        data: np.ndarray,
+        indptr: np.ndarray,
+        indices: np.ndarray,
+        num_docs: int,
+        query_token_ids: np.ndarray,
+        query_token_weights: np.ndarray,
+        dtype: np.dtype,
+        device="cuda",
+    ) -> np.ndarray:
+        """
+        This internal static function calculates the relevance scores for a given query,
+
+        Parameters
+        ----------
+        data (np.ndarray)
+            Data array of the SPLADE index.
+        indptr (np.ndarray)
+            Index pointer array of the SPLADE index.
+        indices (np.ndarray)
+            Indices array of the SPLADE index.
+        num_docs (int)
+            Number of documents in the SPLADE index.
+        query_token_ids (np.ndarray)
+            Array of token IDs to score.
+        query_token_weights (np.ndarray)
+            Array of token weights.
+        dtype (np.dtype)
+            Data type for score calculation.
+
+        Returns
+        -------
+        np.ndarray
+            Array of SPLADE relevance scores for a given query.
+
+        Note
+        ----
+        This function was optimized by the baguetter library. The original implementation can be found at:
+        https://github.com/mixedbread-ai/baguetter/blob/main/baguetter/indices/sparse/models/bm25/index.py
+        """
+
+        indptr_starts = indptr[query_token_ids]
+        indptr_ends = indptr[query_token_ids + 1]
+
+        scores = torch.zeros(num_docs, dtype=torch.float32, device=device)
+        for i in range(len(query_token_ids)):
+
+            start, end = indptr_starts[i], indptr_ends[i]
+            scores.index_add_(
+                0, indices[start:end], data[start:end], alpha=query_token_weights[i]
+            )
+
+            # # The following code is slower with numpy, but faster after JIT compilation
+            # for j in range(start, end):
+            #     scores[indices[j]] += data[j]
+        return scores
 
     def get_scores(
         self,
@@ -586,13 +608,16 @@ class SPLADE_GPU:
         mmap=False,
     ):
         """
-        Load the scores arrays from the BM25 index. This is useful if you want to load
+        Load the scores arrays from the SPLADE index. This is useful if you want to load
         the scores arrays separately from the vocab dictionary and the parameters.
 
         This is called internally by the `load` method, so you do not need to call it directly.
 
         Parameters
         ----------
+        save_dir : str
+            The directory where the SPLADE index was saved.
+
         csc_index_name : str
             The name of the file that contains the csc index arrays (data, indices, indptr, document_ids).
 
@@ -635,7 +660,7 @@ class SPLADE_GPU:
         load_corpus=True,
         mmap=False,
         load_vocab=True,
-        device="cuda",
+        device: Literal["cuda", "mps", "cpu"] = "cuda",
     ):
         """
         Load a SPLADE index that was saved using the `save` method.
@@ -645,7 +670,7 @@ class SPLADE_GPU:
         Parameters
         ----------
         save_dir : str
-            The directory where the BM25S index was saved.
+            The directory where the SPLADE index was saved.
 
         model: SparseEncoder
             A sentence-transformers SPLADE model (The same one used to create the index)
@@ -673,6 +698,13 @@ class SPLADE_GPU:
         load_vocab : bool
             If True, the vocab dictionary will be loaded from the `vocab_name` file. If False, the vocab dictionary
             will not be loaded, and the `vocab_dict` attribute of the SPLADE object will be set to None.
+
+        device : str
+            the accelerator device where the index torch tensors are to be moved for faster computation.
+            Set `device` to "cuda" to make use of your NVIDIA GPUs or "mps" to use your Apple Silicon GPUs.
+            "cuda"- For computations on NVIDIA GPUs using CUDA.
+            "mps": For computations on Apple's Metal Performance Shaders (MPS) framework.
+            "cpu" - For computations on the Central Processing Unit.
         """
         if not isinstance(mmap, bool):
             raise ValueError("`mmap` must be a boolean")
@@ -696,7 +728,7 @@ class SPLADE_GPU:
         original_version = params.pop("version", None)
         num_docs = params.pop("num_docs", None)
 
-        splade_obj = cls(**params)
+        splade_obj = cls(device=device, **params)
         splade_obj.vocab_dict = vocab_dict
         splade_obj._original_version = original_version
 
@@ -847,10 +879,10 @@ class SPLADE_GPU:
         local_dir=None,
         load_corpus=True,
         mmap=False,
-        device="cuda",
+        device: Literal["cuda", "mps", "cpu"] = "cuda",
     ):
         """
-        This function loads the BM25 model from the Hugging Face Hub.
+        This function loads the SPLADE index from the Hugging Face Hub.
 
         Parameters
         ----------
@@ -876,6 +908,13 @@ class SPLADE_GPU:
         mmap: bool
             Whether to memory-map the model. Default is False, which loads the index
             (and potentially corpus) into memory.
+
+        device : str
+            the accelerator device where the index torch tensors are to be moved for faster computation.
+            Set `device` to "cuda" to make use of your NVIDIA GPUs or "mps" to use your Apple Silicon GPUs.
+            "cuda"- For computations on NVIDIA GPUs using CUDA.
+            "mps": For computations on Apple's Metal Performance Shaders (MPS) framework.
+            "cpu" - For computations on the Central Processing Unit.
         """
 
         try:
