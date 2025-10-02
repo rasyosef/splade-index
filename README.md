@@ -6,10 +6,16 @@ SPLADE-Index is an ultrafast search index for SPLADE sparse retrieval models imp
 <br/><br/>
 
 You can use `splade-index` to 
-- Index and Query up to millions of documents using any SPLADE Sparse Embedding (SparseEncoder) model supported by `sentence-transformers` such as `naver/spalde-v3`.
-- Save your index locally and load your index from the save files.
-- Upload your index to huggingface hub and let anyone else download and use it.
-- Make use of NVIDIA GPUs and PyTorch for 10x faster search compared to `splade-index`'s CPU based `numba` backend, when your index contains 1 million plus documents.
+
+✅ Index and Query up to millions of documents using any SPLADE Sparse Embedding (SparseEncoder) model supported by `sentence-transformers` such as `naver/spalde-v3`.
+
+✅ Save your index locally and load your index from the save files.
+
+✅ Upload your index to huggingface hub and let anyone else download and use it.
+
+✅ Use memory mapping to load large indices with minimal RAM usage and no noticeable change in search latency (Loading a 1 Million document index with mmap uses just 2GB of RAM).
+
+✅ Make use of NVIDIA GPUs and PyTorch for 10x faster search compared to `splade-index`'s CPU based `numba` backend, when your index contains 1 million plus documents.
 
 ## SPLADE
 
@@ -143,6 +149,38 @@ queries = ["does the fish purr like a cat?"]
 
 # Get top-k results as a tuple of (doc ids, documents, scores). All three are arrays of shape (n_queries, k).
 results = retriever.retrieve(queries, k=2)
+doc_ids, result_docs, scores = results.doc_ids, results.documents, results.scores
+
+for i in range(doc_ids.shape[1]):
+    doc_id, doc, score = doc_ids[0, i], result_docs[0, i], scores[0, i]
+    print(f"Rank {i+1} (score: {score:.2f}) (doc_id: {doc_id}): {doc}")
+```
+
+## 10x faster search with SPLADE_GPU
+
+For large indices with 1 million plus documents, you can use `SPLADE_GPU` for 10x higher search throughput (queries/second) relative to `splade-index`'s already fast CPU based `numba` backend. In order to use `SPLADE_GPU`, you need to have an NVIDIA GPU and a pytorch installation with CUDA.
+
+```python
+from sentence_transformers import SparseEncoder
+from splade_index.pytorch import SPLADE_GPU
+
+# Download a SPLADE model from the 🤗 Hub
+model = SparseEncoder("rasyosef/splade-mini", device="cuda")
+
+# Load a SPLADE index from the Hugging Face model hub
+repo_id = "rasyosef/msmarco_dev_1M_splade_index"
+retriever = SPLADE_GPU.load_from_hub(
+    repo_id, 
+    model=model, 
+    mmap=True, # memory mapping enabled for low RAM usage
+    device="cuda"
+)
+
+# Query the corpus
+queries = ["what is a corporation?", "do owls eat in the day", "average pharmacy tech salary"]
+
+# Get top-k results as a tuple of (doc ids, documents, scores). All three are arrays of shape (n_queries, k).
+results = retriever.retrieve(queries, k=5)
 doc_ids, result_docs, scores = results.doc_ids, results.documents, results.scores
 
 for i in range(doc_ids.shape[1]):
