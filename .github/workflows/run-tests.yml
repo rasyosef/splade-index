@@ -38,6 +38,7 @@ jobs:
       - name: Run core tests
         run: |
           python -m unittest discover -s tests/core
+          python -m unittest discover -s tests/pytorch
 
       - name: Install Numba
         run: |

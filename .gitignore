@@ -184,4 +184,5 @@ bm25s_indices/
 # test file
 test.py
 test_hf.py
+test_gpu.py
 animal_index_splade/
