@@ -5,17 +5,13 @@ SPLADE-Index is an ultrafast search index for SPLADE sparse retrieval models imp
 </i>
 <br/><br/>
 
-You can use `splade-index` to 
+#### You can use `splade-index` to 
 
-✅ Index and Query up to millions of documents using any SPLADE Sparse Embedding (SparseEncoder) model supported by `sentence-transformers` such as `naver/spalde-v3`.
-
-✅ Save your index locally and load your index from the save files.
-
-✅ Upload your index to huggingface hub and let anyone else download and use it.
-
-✅ Use memory mapping to load large indices with minimal RAM usage and no noticeable change in search latency (Loading a 1 Million document index with mmap uses just 2GB of RAM).
-
-✅ Make use of NVIDIA GPUs and PyTorch for 10x faster search compared to `splade-index`'s CPU based `numba` backend, when your index contains 1 million plus documents.
+* ✅ Index and Query up to millions of documents using any SPLADE Sparse Embedding ([SparseEncoder](https://sbert.net/docs/sparse_encoder/usage/usage.html)) model supported by [sentence-transformers](https://sbert.net/) such as `naver/spalde-v3`.
+* 📀 Save your index locally and load your index from the save files.
+* 🤗 Upload your index to HuggingFace hub and let anyone else download and use it.
+* 🪶 Use memory mapping to load large indices with minimal RAM usage and no noticeable change in search latency (Loading a 1 Million document index with mmap uses just 2GB of RAM).
+* ⚡ Make use of NVIDIA GPUs and PyTorch for 10x faster search compared to `splade-index`'s CPU based `numba` backend, when your index contains 1 million plus documents.
 
 ## SPLADE
 
