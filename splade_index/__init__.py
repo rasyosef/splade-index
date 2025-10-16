@@ -622,7 +622,7 @@ class SPLADE:
         if corpus is not None:
             with open(corpus_path, "wt", encoding="utf-8") as f:
                 for doc_id, doc in zip(document_ids, corpus):
-                    doc = {"id": doc_id, "text": doc}
+                    doc = {"id": doc_id.item(), "text": doc}
                     try:
                         doc_str = utils.json_functions.dumps(doc, ensure_ascii=False)
                     except Exception as e:
