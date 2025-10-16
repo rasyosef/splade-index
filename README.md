@@ -7,9 +7,9 @@ SPLADE-Index is an ultrafast search index for SPLADE sparse retrieval models imp
 
 #### You can use `splade-index` to 
 
-* ✅ Index and Query up to millions of documents using any SPLADE Sparse Embedding ([SparseEncoder](https://sbert.net/docs/sparse_encoder/usage/usage.html)) model supported by [sentence-transformers](https://sbert.net/) such as `naver/spalde-v3`.
+* ✅ Index and Query up to millions of documents using any SPLADE Sparse Embedding ([SparseEncoder](https://sbert.net/docs/sparse_encoder/usage/usage.html)) model supported by [sentence-transformers](https://sbert.net/), such as `naver/spalde-v3`.
 * 📀 Save your index locally and load your index from the save files.
-* 🤗 Upload your index to HuggingFace hub and let anyone else download and use it.
+* 🤗 Upload your index to HuggingFace hub and let anyone download and use it.
 * 🪶 Use memory mapping to load large indices with minimal RAM usage and no noticeable change in search latency (Loading a 1 Million document index with mmap uses just 2GB of RAM).
 * ⚡ Make use of NVIDIA GPUs and PyTorch for 10x faster search compared to `splade-index`'s CPU based `numba` backend, when your index contains 1 million plus documents.
 
@@ -30,6 +30,12 @@ You can install `splade-index` with pip:
 pip install splade-index
 ```
 
+In order to use the 2x faster `numba` backend, install `splade-index` with the `core` dependencies:
+
+```bash
+pip install splade-index[core]
+```
+
 ## Quickstart
 
 Here is a simple example of how to use `splade-index`:
@@ -43,10 +49,10 @@ model = SparseEncoder("rasyosef/splade-tiny")
 
 # Create your corpus here
 corpus = [
-    "a cat is a feline and likes to purr",
-    "a dog is the human's best friend and loves to play",
-    "a bird is a beautiful animal that can fly",
-    "a fish is a creature that lives in water and swims",
+    "Bonobos are intelligent primates native to the Democratic Republic of the Congo.",
+    "Komodo dragons are giant carnivorous lizards native to Indonesia.",
+    "Gelada baboons are grass-eating primates native to the highlands of Ethiopia.",
+    "Orangutans are highly intelligent great apes native to the rainforests of Indonesia and Malaysia.",   
 ]
 
 # Create the SPLADE retriever and index the corpus
@@ -54,7 +60,7 @@ retriever = SPLADE()
 retriever.index(model=model, documents=corpus)
 
 # Query the corpus
-queries = ["does the fish purr like a cat?"]
+queries = ["Do any large primates come from the jungles of Indonesia?"]
 
 # Get top-k results as a tuple of (doc ids, documents, scores). All three are arrays of shape (n_queries, k).
 results = retriever.retrieve(queries, k=2)
@@ -102,10 +108,10 @@ model = SparseEncoder("rasyosef/splade-tiny")
 
 # Create your corpus here
 corpus = [
-    "a cat is a feline and likes to purr",
-    "a dog is the human's best friend and loves to play",
-    "a bird is a beautiful animal that can fly",
-    "a fish is a creature that lives in water and swims",
+    "Bonobos are intelligent primates native to the Democratic Republic of the Congo.",
+    "Komodo dragons are giant carnivorous lizards native to Indonesia.",
+    "Gelada baboons are grass-eating primates native to the highlands of Ethiopia.",
+    "Orangutans are highly intelligent great apes native to the rainforests of Indonesia and Malaysia.",   
 ]
 
 # Create the SPLADE retriever and index the corpus
@@ -141,7 +147,7 @@ repo_id = f"{user}/splade-index-animals"
 retriever = SPLADE.load_from_hub(repo_id, model=model, token=token)
 
 # Query the corpus
-queries = ["does the fish purr like a cat?"]
+queries = ["Do any large primates come from the jungles of Indonesia?"]
 
 # Get top-k results as a tuple of (doc ids, documents, scores). All three are arrays of shape (n_queries, k).
 results = retriever.retrieve(queries, k=2)
